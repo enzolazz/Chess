@@ -1,7 +1,8 @@
 #include <SFML/Graphics.hpp>
 #include "board.cpp"
+#include <iostream>
 
-const int squareSize = 5 * 25;
+const int squareSize = 110;
 
 int main() {
     sf::RenderWindow window(sf::VideoMode({squareSize * 8, squareSize * 8}), "Chess-app");
@@ -11,13 +12,31 @@ int main() {
     whiteSquare.setFillColor(sf::Color(48, 97, 65, 38));
     blackSquare.setFillColor(sf::Color(36, 54, 43, 21));
 
-    Board board(squareSize);
-    while (window.isOpen())
-    {
-        while (const std::optional event = window.pollEvent())
-        {
+    bool moving = false, legalMove = false;
+    Piece* piece = nullptr;
+
+    Board board(window, squareSize);
+    while (window.isOpen()) {
+        while (const std::optional event = window.pollEvent()) {
             if (event->is<sf::Event::Closed>())
                 window.close();
+            else if (event->is<sf::Event::MouseButtonPressed>()) {
+                piece = board.piecePressed(sf::Mouse::getPosition(window));
+                moving = piece != nullptr;
+            }
+            else if (event->is<sf::Event::MouseButtonReleased>() && moving) {
+                legalMove = board.pieceReleased(*piece, sf::Mouse::getPosition(window));
+                sf::Vector2f newPosition = piece->getSprite().getPosition();
+                //if (!legalMove)
+                    //newPosition = piece->getPosition();
+
+                board.movePiece(*piece, static_cast<sf::Vector2i>(newPosition)); 
+                moving = false;
+            }
+
+            if (moving) {
+                piece->drag(static_cast<sf::Vector2f>(sf::Mouse::getPosition(window)));
+            }
         }
 
         window.clear();
