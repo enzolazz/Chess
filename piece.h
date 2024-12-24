@@ -53,7 +53,7 @@ void Piece::setTexture(char piece) {
 }
 
 void Piece::drag(sf::Vector2f mousePosition) {
-    sprite->setPosition({mousePosition.x, mousePosition.y});
+    sprite->setPosition(mousePosition);
 }
 
 void Piece::updatePosition(sf::Vector2f position) {

@@ -12,10 +12,13 @@ private:
 
     float _squareSize;
     std::vector<std::vector<Piece>> pieces;
+    Piece* _moving = nullptr;
 
     void updatePieces();
     void setPiece(int x, int y, char piece);
-
+    void movePiece(const sf::Vector2i &position);
+    bool isLegalMove(Piece piece, const sf::Vector2f &position);
+    bool turnCheck(char pieceType);
 public:
     sf::RectangleShape squares[8][8];
 
@@ -23,10 +26,10 @@ public:
     void draw(sf::RenderWindow &window);
     bool isWhiteMove() const { return _isWhiteMove; }
     void toggleTurn() { _isWhiteMove = !_isWhiteMove; }
-    Piece* piecePressed(const sf::Vector2i &position);
-    bool pieceReleased(Piece piece, const sf::Vector2i &position) { return false; }
-    Piece& getPiece(int x, int y) { return pieces[x][y]; }
-    void movePiece(Piece piece, const sf::Vector2i &position);
+    bool piecePressed(const sf::Vector2i &position);
+    void pieceReleased();
+    void pieceDrag();
+    Piece* getPiece(int x, int y) { return &pieces[x][y]; }
 };
 
 Board::Board(sf::RenderWindow& window, float squareSize) : _window(window), _squareSize(squareSize) {
@@ -65,29 +68,48 @@ void Board::setPiece(int x, int y, char piece) {
 }
 
 void Board::draw(sf::RenderWindow &window) {
+    for (int i = 0; i < 8; i++)
+        for (int j = 0; j < 8; j++)
+            window.draw(squares[i][j]);
+
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
-            window.draw(squares[i][j]);
-            Piece piece = getPiece(i, j);
-            if (piece.getType() != '0') { // Verifica se a peça não é vazia
-                window.draw(pieces[i][j].getSprite()); // Usa referência, não ponteiro
-            }
+            Piece* piece = getPiece(i, j);
+            if (piece->getType() != '0' && piece != this->_moving)
+                window.draw(piece->getSprite());
         }
     }
+
+    if (this->_moving != nullptr)
+        window.draw(this->_moving->getSprite());
 }
 
-Piece* Board::piecePressed(const sf::Vector2i &position) {
+bool Board::piecePressed(const sf::Vector2i &position) {
     int x = position.x / _squareSize;
     int y = position.y / _squareSize;
 
-    Piece *piece = &getPiece(x, y);
-    if (piece->getType() == '0') return nullptr;
+    this->_moving = getPiece(x, y);
+    char pieceType = this->_moving->getType();
+    if (pieceType == '0' || !turnCheck(pieceType)) {
+        this->_moving = nullptr;
+        return false;
+    }
 
-    std::cout << "(" << x << ", " << y << ")" << std::endl;
-    return piece;
+    std::cout << "Clicked piece " << pieceType << " at (" << x << ", " << y << ")" << std::endl;
+    return true;
 }
 
-void Board::movePiece(Piece piece, const sf::Vector2i &position) {
+void Board::pieceDrag() {
+    if (this->_moving == nullptr) return;
+
+    this->_moving->drag(static_cast<sf::Vector2f>(sf::Mouse::getPosition(_window)));
+}
+
+void Board::movePiece(const sf::Vector2i &position) {
+    if (this->_moving == nullptr) return;
+    
+    Piece piece = *this->_moving;
+
     int oldX = piece.getPosition().x / _squareSize;
     int oldY = piece.getPosition().y / _squareSize;
 
@@ -97,4 +119,33 @@ void Board::movePiece(Piece piece, const sf::Vector2i &position) {
     int y = position.y / _squareSize;
 
     setPiece(x, y, piece.getType());
+}
+
+void Board::pieceReleased() {
+    sf::Vector2f newPosition = this->_moving->getSprite().getPosition();
+
+    if (!isLegalMove(*this->_moving, newPosition))
+        newPosition = this->_moving->getPosition();
+    else
+        toggleTurn();
+
+    movePiece(static_cast<sf::Vector2i>(newPosition));
+
+    this->_moving = nullptr;
+}
+
+bool Board::isLegalMove(Piece piece, const sf::Vector2f &position) {
+    int x = position.x / _squareSize;
+    int y = position.y / _squareSize;
+
+    int pieceX = piece.getPosition().x / _squareSize;
+    int pieceY = piece.getPosition().y / _squareSize;
+
+    if (x == pieceX && y == pieceY) return false;
+
+    return true;
+}
+
+bool Board::turnCheck(char pieceType) {
+    return (_isWhiteMove && std::isupper(pieceType)) || (!_isWhiteMove && std::islower(pieceType));
 }

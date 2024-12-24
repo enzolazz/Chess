@@ -13,7 +13,6 @@ int main() {
     blackSquare.setFillColor(sf::Color(36, 54, 43, 21));
 
     bool moving = false, legalMove = false;
-    Piece* piece = nullptr;
 
     Board board(window, squareSize);
     while (window.isOpen()) {
@@ -21,21 +20,15 @@ int main() {
             if (event->is<sf::Event::Closed>())
                 window.close();
             else if (event->is<sf::Event::MouseButtonPressed>()) {
-                piece = board.piecePressed(sf::Mouse::getPosition(window));
-                moving = piece != nullptr;
+                moving = board.piecePressed(sf::Mouse::getPosition(window));
             }
             else if (event->is<sf::Event::MouseButtonReleased>() && moving) {
-                legalMove = board.pieceReleased(*piece, sf::Mouse::getPosition(window));
-                sf::Vector2f newPosition = piece->getSprite().getPosition();
-                //if (!legalMove)
-                    //newPosition = piece->getPosition();
-
-                board.movePiece(*piece, static_cast<sf::Vector2i>(newPosition)); 
+                board.pieceReleased();
                 moving = false;
             }
 
             if (moving) {
-                piece->drag(static_cast<sf::Vector2f>(sf::Mouse::getPosition(window)));
+                board.pieceDrag();
             }
         }
 
