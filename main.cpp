@@ -3,12 +3,6 @@
 
 const int squareSize = 5 * 25;
 
-void drawBoard(Board &board, sf::RenderWindow &window) {
-    for (int i = 0; i < 8; i++)
-        for (int j = 0; j < 8; j++)
-            window.draw(board.squares[i][j]);
-}
-
 int main() {
     sf::RenderWindow window(sf::VideoMode({squareSize * 8, squareSize * 8}), "Chess-app");
     sf::RectangleShape whiteSquare({squareSize, squareSize});
@@ -27,7 +21,7 @@ int main() {
         }
 
         window.clear();
-        drawBoard(board, window);
+        board.draw(window);
         window.display();
     }
 }
