@@ -1,6 +1,6 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/Window.hpp>
-#include "board.cpp"
+#include "game.cpp"
 //#include <iostream>
 
 const int squareSize = 110;
@@ -9,7 +9,7 @@ int main() {
     sf::RenderWindow window(sf::VideoMode({squareSize * 8, squareSize * 8}), "Chess-app");
     bool moving = false, legalMove = false;
 
-    Board board(window, squareSize);
+    Game game(window, squareSize);
     while (window.isOpen()) {
         while (const std::optional event = window.pollEvent()) {
             // Window closed or escape key pressed: exit
@@ -20,21 +20,21 @@ int main() {
 
             if (event->is<sf::Event::MouseButtonPressed>() &&
                 event->getIf<sf::Event::MouseButtonPressed>()->button == sf::Mouse::Button::Left) {
-                moving = board.piecePressed(sf::Mouse::getPosition(window));
+                moving = game.piecePressed(sf::Mouse::getPosition(window));
             }
 
             if (event->is<sf::Event::MouseButtonReleased>() &&
                 moving && event->getIf<sf::Event::MouseButtonReleased>()->button == sf::Mouse::Button::Left) {
-                board.pieceReleased();
+                game.pieceReleased();
                 moving = false;
             }
 
             if (moving)
-                board.pieceDrag();
+                game.pieceDrag();
         }
 
         window.clear();
-        board.draw();
+        game.draw();
         window.display();
     }
 
