@@ -1,10 +1,11 @@
-#include "board.h"
+#include "board.cpp"
 #include <vector>
 #include <SFML/Graphics.hpp>
 
 class Game {
 private:
     sf::RenderWindow& _window;
+    int _squareSize;
     bool _isWhiteMove = true;
     std::string _initialBoard = "rnbqkbnrpppppppp8888PPPPPPPPRNBQKBNR";
     Board* board;
@@ -23,14 +24,14 @@ public:
     void pieceDrag();
 };
 
-Game::Game(sf::RenderWindow& window, int squareSize) : _window(window) {
+Game::Game(sf::RenderWindow& window, int squareSize) : _window(window), _squareSize(squareSize) {
     board = new Board(squareSize, _initialBoard);
 }
 
 void Game::draw() {
     for (int i = 0; i < 8; i++)
         for (int j = 0; j < 8; j++)
-            _window.draw(board->squares[i][j]);
+            _window.draw(board->board[i][j]);
 
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
@@ -72,7 +73,7 @@ void Game::pieceReleased() {
     else
         toggleTurn();
 
-    movePiece(static_cast<sf::Vector2i>(newPosition));
+    board->movePiece(_moving, static_cast<sf::Vector2i>(newPosition));
 
     _moving = nullptr;
 }

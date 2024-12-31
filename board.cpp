@@ -1,15 +1,13 @@
 #include "board.h"
 
-Board::Board(int squareSize, std::string piecesSetup) : squareSize(squareSize) {
-    pieces.resize(8, std::vector<Piece>(8, Piece('0', {0, 0})));
-
+Board::Board(float squareSize, std::string piecesSetup) : _squareSize(squareSize) {
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
-            squares[i][j].setSize({squareSize, squareSize});
-            squares[i][j].setPosition({i * squareSize, j * squareSize});
+            board[i][j].setSize({squareSize, squareSize});
+            board[i][j].setPosition({i * squareSize, j * squareSize});
 
             sf::Color color = (i + j) % 2 == 0 ? whiteColor : blackColor;
-            squares[i][j].setFillColor(color);
+            board[i][j].setFillColor(color);
         }
     }
 
@@ -33,30 +31,31 @@ void Board::initialBoard(std::string piecesSetup) {
     }
 }
 
-Piece* getPiece(int x, int y) {
+Piece* Board::getPiece(int x, int y) {
     return pieces[x][y];
 }
 
 void Board::setPiece(int x, int y, char piece) {
-    pieces[x][y] = Piece(piece, {x * _squareSize + _squareSize / 2, y * _squareSize + _squareSize / 2});
+    pieces[x][y] = new Piece(piece, {x * _squareSize + _squareSize / 2, y * _squareSize + _squareSize / 2});
 }
 
 void Board::setPiece(int x, int y, Piece* piece) {
-    if (pieces[x][y] != nullptr) delete pieces[x][y];
+    //if (pieces[x][y] != nullptr) delete pieces[x][y];
 
     piece->updatePosition(sf::Vector2f(x * _squareSize + _squareSize / 2, y * _squareSize + _squareSize / 2));
     pieces[x][y] = piece;
 }
 
-void Board::deletePìece(int x, int y) {
-    delete pieces[x][y];
+void Board::deletePiece(int x, int y) {
+    pieces[x][y] = nullptr;
+    //delete pieces[x][y];
 }
 
 void Board::movePiece(Piece* piece, const sf::Vector2i &position) {
     int oldX = piece->getPosition().x / _squareSize;
     int oldY = piece->getPosition().y / _squareSize;
 
-    deletePìece(oldX, oldY);
+    deletePiece(oldX, oldY);
 
     int x = position.x / _squareSize;
     int y = position.y / _squareSize;
