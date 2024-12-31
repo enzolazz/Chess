@@ -23,7 +23,7 @@ public:
     sf::RectangleShape squares[8][8];
 
     Board(sf::RenderWindow& window, float squareSize);
-    void draw(sf::RenderWindow &window);
+    void draw();
     bool isWhiteMove() const { return _isWhiteMove; }
     void toggleTurn() { _isWhiteMove = !_isWhiteMove; }
     bool piecePressed(const sf::Vector2i &position);
@@ -67,21 +67,21 @@ void Board::setPiece(int x, int y, char piece) {
     pieces[x][y] = Piece(piece, {x * _squareSize + _squareSize / 2, y * _squareSize + _squareSize / 2});
 }
 
-void Board::draw(sf::RenderWindow &window) {
+void Board::draw() {
     for (int i = 0; i < 8; i++)
         for (int j = 0; j < 8; j++)
-            window.draw(squares[i][j]);
+            _window.draw(squares[i][j]);
 
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
             Piece* piece = getPiece(i, j);
             if (piece->getType() != '0' && piece != this->_moving)
-                window.draw(piece->getSprite());
+                _window.draw(piece->getSprite());
         }
     }
 
     if (this->_moving != nullptr)
-        window.draw(this->_moving->getSprite());
+        _window.draw(this->_moving->getSprite());
 }
 
 bool Board::piecePressed(const sf::Vector2i &position) {
