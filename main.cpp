@@ -1,7 +1,7 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/Window.hpp>
 #include "game.cpp"
-//#include <iostream>
+#include <iostream>
 
 const int squareSize = 110;
 
@@ -28,6 +28,10 @@ int main() {
                 game.pieceReleased();
                 moving = false;
             }
+
+            if (event->is<sf::Event::KeyPressed>() &&
+                event->getIf<sf::Event::KeyPressed>()->code == sf::Keyboard::Key::R)
+                game.switchSides();
 
             if (moving)
                 game.pieceDrag();

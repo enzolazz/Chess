@@ -13,7 +13,7 @@ private:
 
     bool isLegalMove(Piece piece, const sf::Vector2f &position);
     bool turnCheck(char pieceType);
-    void toggleTurn() { _isWhiteMove = !_isWhiteMove; }
+    void toggleTurn();
 public:
     Game(sf::RenderWindow& window, int squareSize);
 
@@ -22,6 +22,7 @@ public:
     bool piecePressed(const sf::Vector2i &position);
     void pieceReleased();
     void pieceDrag();
+    void switchSides();
 };
 
 Game::Game(sf::RenderWindow& window, int squareSize) : _window(window), _squareSize(squareSize) {
@@ -92,4 +93,12 @@ bool Game::isLegalMove(Piece piece, const sf::Vector2f &position) {
 
 bool Game::turnCheck(char pieceType) {
     return (_isWhiteMove && std::isupper(pieceType)) || (!_isWhiteMove && std::islower(pieceType));
+}
+
+void Game::toggleTurn() { 
+    _isWhiteMove = !_isWhiteMove;
+}
+
+void Game::switchSides() {
+   board->invertPosition(); 
 }

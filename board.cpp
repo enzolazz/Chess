@@ -36,13 +36,14 @@ Piece* Board::getPiece(int x, int y) {
 }
 
 void Board::setPiece(int x, int y, char piece) {
-    pieces[x][y] = new Piece(piece, {x * _squareSize + _squareSize / 2, y * _squareSize + _squareSize / 2});
+    Square square = {x, y, _squareSize};
+    pieces[x][y] = new Piece(piece, Square{x, y, _squareSize});
 }
 
 void Board::setPiece(int x, int y, Piece* piece) {
     //if (pieces[x][y] != nullptr) delete pieces[x][y];
 
-    piece->updatePosition(sf::Vector2f(x * _squareSize + _squareSize / 2, y * _squareSize + _squareSize / 2));
+    piece->setSquare(x, y);
     pieces[x][y] = piece;
 }
 
@@ -55,10 +56,34 @@ void Board::movePiece(Piece* piece, const sf::Vector2i &position) {
     int oldX = piece->getPosition().x / _squareSize;
     int oldY = piece->getPosition().y / _squareSize;
 
-    deletePiece(oldX, oldY);
+    //deletePiece(oldX, oldY);
 
     int x = position.x / _squareSize;
     int y = position.y / _squareSize;
 
     setPiece(x, y, piece);
+}
+
+void Board::invertPosition() {
+    //std::vector<std::vector<Piece*>> pieces = std::vector<std::vector<Piece*>> (8, std::vector<Piece*>(8));
+    for (int j = 0, y = 7; j < 4; j++, y--) {
+        for (int i = 0, x = 7; i < 8; i++, x--) {
+            if (pieces[i][j] == nullptr && pieces[x][y] == nullptr)
+                continue;
+
+            if (pieces[i][j] != nullptr) pieces[i][j]->setSquare(x, y);
+            if (pieces[x][y] != nullptr) pieces[x][y]->setSquare(i, j);
+
+            //swap(pieces[i][j], pieces[x][y]);
+        }
+    }
+    std::cout << "Inverted!" << std::endl;
+}
+
+void Board::swap(Piece* a, Piece* b) {
+    if (a == nullptr && b == nullptr) return;
+
+    Piece* tmp = a;
+    a = b;
+    b = tmp;
 }

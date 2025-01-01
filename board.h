@@ -12,6 +12,7 @@ private:
     void initialBoard(std::string setup);
     void setPiece(int x, int y, char pieceType);
     void setPiece(int x, int y, Piece *piece);
+    void swap(Piece* a, Piece* b);
     void deletePiece(int x, int y);
 public:
     sf::RectangleShape board[8][8];
@@ -19,5 +20,6 @@ public:
     Board(float squareSize, std::string piecesSetup);
     Piece* getPiece(int x, int y); 
     void movePiece(Piece* piece, const sf::Vector2i &position);
+    void invertPosition();
     void setColor(sf::Color newColor);
 };

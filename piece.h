@@ -2,39 +2,42 @@
 #include <string>
 #include <iostream>
 
+struct Square {
+    int x;
+    int y;
+    float size;
+};
+
 class Piece {
 
 private:
     sf::Texture* texture;
     sf::Sprite* sprite;
-    sf::Vector2f position;
     char piece;
+    Square square;
 
-   void setTexture(char piece); 
-
+    void setTexture(char piece); 
+    void setSpritePosition(Square square);
+    sf::Vector2f findSquarePosition(Square square);
 
 public:
-    Piece();
-    Piece(char piece, sf::Vector2f position);
+    Piece(char piece, Square square);
 
     void drag(sf::Vector2f mousePosition);
-    void updatePosition(sf::Vector2f position);
-    sf::Vector2f getPosition();
+    void setSquare(Square square);
+    Square getSquare();
     sf::Sprite& getSprite();
     char getType();
 };
 
-Piece::Piece(char piece, sf::Vector2f position)
-        : piece(piece), position(position) { 
+Piece::Piece(char piece, Square square)
+        : piece(piece), square(square) { 
 
     if (piece != '0') {
         setTexture(piece);
-        sprite->setPosition({position.x, position.y});
+        setSpritePosition(square);
     }
 }
-
-
-Piece::Piece() : piece('0'), position({0, 0}) {}
 
 void Piece::setTexture(char piece) {
     std::string path = "images/" + std::string(1, piece) + ".png";
@@ -56,13 +59,15 @@ void Piece::drag(sf::Vector2f mousePosition) {
     sprite->setPosition(mousePosition);
 }
 
-void Piece::updatePosition(sf::Vector2f position) {
-    this->position = position;
-    sprite->setPosition({position.x, position.y});
+void Piece::setSquare(Square square) {
+    this->square = square;
+
+    setSpritePosition(square);
 }
 
-sf::Vector2f Piece::getPosition() {
-    return this->position;
+void Piece::setSpritePosition(Square square) {
+    sf::Vector2f position = findSquarePosition(square);
+    sprite->setPosition({position.x, position.y});
 }
 
 sf::Sprite& Piece::getSprite() {
@@ -73,3 +78,7 @@ char Piece::getType() {
     return piece;
 }
 
+sf::Vector2f Piece::findSquarePosition(Square square) {
+    sf::Vector2f pos(square.x * square.size + square.size / 2, square.y * square.size + square.size / 2);
+    return pos;
+}
