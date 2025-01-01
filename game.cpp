@@ -5,17 +5,17 @@
 class Game {
 private:
     sf::RenderWindow& _window;
-    int _squareSize;
+    float _squareSize;
     bool _isWhiteMove = true;
     std::string _initialBoard = "rnbqkbnrpppppppp8888PPPPPPPPRNBQKBNR";
     Board* board;
     Piece* _moving = nullptr;
 
-    bool isLegalMove(Piece piece, const sf::Vector2f &position);
+    bool isLegalMove(Piece piece, Square newSquare);
     bool turnCheck(char pieceType);
     void toggleTurn();
 public:
-    Game(sf::RenderWindow& window, int squareSize);
+    Game(sf::RenderWindow& window, float squareSize);
 
     void draw();
     bool isWhiteMove() const { return _isWhiteMove; }
@@ -25,7 +25,7 @@ public:
     void switchSides();
 };
 
-Game::Game(sf::RenderWindow& window, int squareSize) : _window(window), _squareSize(squareSize) {
+Game::Game(sf::RenderWindow& window, float squareSize) : _window(window), _squareSize(squareSize) {
     board = new Board(squareSize, _initialBoard);
 }
 
@@ -68,23 +68,24 @@ void Game::pieceDrag() {
 
 void Game::pieceReleased() {
     sf::Vector2f newPosition = _moving->getSprite().getPosition();
+    Square movingSquare =  {(int) (newPosition.x / _squareSize), (int) (newPosition.y / _squareSize), _squareSize};
 
-    if (!isLegalMove(*_moving, newPosition))
-        newPosition = _moving->getPosition();
+    if (!isLegalMove(*_moving, movingSquare))
+        movingSquare = _moving->getSquare();
     else
         toggleTurn();
 
-    board->movePiece(_moving, static_cast<sf::Vector2i>(newPosition));
+    board->movePiece(_moving, movingSquare);
 
     _moving = nullptr;
 }
 
-bool Game::isLegalMove(Piece piece, const sf::Vector2f &position) {
-    int x = position.x / _squareSize;
-    int y = position.y / _squareSize;
+bool Game::isLegalMove(Piece piece, Square square){
+    int x = square.x;
+    int y = square.y;
 
-    int pieceX = piece.getPosition().x / _squareSize;
-    int pieceY = piece.getPosition().y / _squareSize;
+    int pieceX = piece.getSquare().x;
+    int pieceY = piece.getSquare().y;
 
     if (x == pieceX && y == pieceY) return false;
 
@@ -97,6 +98,7 @@ bool Game::turnCheck(char pieceType) {
 
 void Game::toggleTurn() { 
     _isWhiteMove = !_isWhiteMove;
+    switchSides();
 }
 
 void Game::switchSides() {

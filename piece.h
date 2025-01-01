@@ -65,6 +65,10 @@ void Piece::setSquare(Square square) {
     setSpritePosition(square);
 }
 
+Square Piece::getSquare() {
+    return square;
+}
+
 void Piece::setSpritePosition(Square square) {
     sf::Vector2f position = findSquarePosition(square);
     sprite->setPosition({position.x, position.y});
