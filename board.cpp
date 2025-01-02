@@ -35,8 +35,26 @@ Piece* Board::getPiece(int x, int y) {
     return pieces[x][y];
 }
 
-void Board::setPiece(char piece, Square square) {
-    pieces[square.x][square.y] = new Piece(piece, square);
+void Board::setPiece(char pieceType, Square square) {
+    Piece *piece;
+    switch (std::tolower(pieceType)) {
+        case 'p':
+            piece = new Pawn(pieceType, square);
+        case 'r':
+            piece = new Rook(pieceType, square);
+        case 'n':
+            piece = new Knight(pieceType, square);
+        case 'b':
+            piece = new Bishop(pieceType, square);
+        case 'k':
+            piece = new King(pieceType, square);
+        case 'q':
+            piece = new Queen(pieceType, square);
+        default:
+            break;
+    }
+
+    pieces[square.x][square.y] = piece;
 }
 
 void Board::setPiece(Piece* piece, Square square) {

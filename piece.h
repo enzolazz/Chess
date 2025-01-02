@@ -21,6 +21,8 @@ private:
     sf::Vector2f findSquarePosition(Square square);
 
 public:
+    bool orientation = true;
+
     Piece(char piece, Square square);
 
     void drag(sf::Vector2f mousePosition);
@@ -28,6 +30,8 @@ public:
     Square getSquare();
     sf::Sprite& getSprite();
     char getType();
+    virtual bool isValidMove(Square newSquare) = 0;
+    void toggleOrientation();
 };
 
 Piece::Piece(char piece, Square square)
@@ -86,3 +90,74 @@ sf::Vector2f Piece::findSquarePosition(Square square) {
     sf::Vector2f pos(square.x * square.size + square.size / 2, square.y * square.size + square.size / 2);
     return pos;
 }
+
+void Piece::toggleOrientation() {
+    orientation = !orientation;
+}
+
+class Pawn : public Piece {
+private:
+    bool isInInitialRow() {
+        int row = getSquare().y + 1;
+        if (std::isupper(getType())) return row == orientation ? 7 : 2;
+        else return row == orientation ? 2 : 7;
+    }
+
+public:
+    explicit Pawn(char piece, Square square) : Piece(piece, square) {}
+
+    bool isValidMove(Square newSquare) override {
+        std::cout << "Entrou no peão\n";
+        int walk = (isInInitialRow() ? 2 : 1) * (orientation ? 1 : -1);
+        int moveX = getSquare().x - newSquare.x, moveY = getSquare().y - newSquare.y;
+
+        if (moveY == 0 || moveX > 1) return false;
+
+        if (orientation) {
+            if (moveY > walk) return false;
+        } else 
+            if (moveY < walk) return false;
+
+        return true;
+    }
+};
+
+class Rook : public Piece {
+public:
+    explicit Rook(char piece, Square square) : Piece(piece, square) {}
+
+    bool isValidMove(Square newSquare) {return true;}
+};
+
+class Bishop: public Piece {
+public:
+    explicit Bishop(char piece, Square square) : Piece(piece, square) {}
+
+    bool isValidMove(Square newSquare) {return true;}
+};
+
+class Knight: public Piece {
+public:
+    explicit Knight(char piece, Square square) : Piece(piece, square) {}
+
+    bool isValidMove(Square newSquare) {return true;}
+};
+
+class King: public Piece {
+public:
+    explicit King(char piece, Square square) : Piece(piece, square) {}
+
+    bool isValidMove(Square newSquare) {return true;}
+};
+
+class Queen: public Piece {
+public:
+    explicit Queen(char piece, Square square) : Piece(piece, square) {}
+
+    bool isValidMove(Square newSquare) {return true;}
+};
+
+
+
+
+

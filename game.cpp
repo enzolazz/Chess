@@ -11,7 +11,7 @@ private:
     Board* board;
     Piece* _moving = nullptr;
 
-    bool isLegalMove(Piece piece, Square newSquare);
+    bool isLegalMove(Piece* piece, Square newSquare);
     bool turnCheck(char pieceType);
     void toggleTurn();
 public:
@@ -56,7 +56,7 @@ bool Game::piecePressed(const sf::Vector2i &position) {
         return false;
     }
 
-    //std::cout << "Clicked piece " << _moving->getType() << " at (" << x << ", " << y << ")" << std::endl;
+    std::cout << "Clicked piece " << _moving->getType() << " at (" << x << ", " << y << ")" << std::endl;
     return true;
 }
 
@@ -70,7 +70,7 @@ void Game::pieceReleased() {
     sf::Vector2f newPosition = _moving->getSprite().getPosition();
     Square movingSquare =  {(int) (newPosition.x / _squareSize), (int) (newPosition.y / _squareSize), _squareSize};
 
-    bool legalMove = isLegalMove(*_moving, movingSquare);
+    bool legalMove = isLegalMove(_moving, movingSquare);
     if (!legalMove)
         movingSquare = _moving->getSquare();
 
@@ -81,14 +81,15 @@ void Game::pieceReleased() {
     if (legalMove) toggleTurn();
 }
 
-bool Game::isLegalMove(Piece piece, Square square){
+bool Game::isLegalMove(Piece* piece, Square square){
     int x = square.x;
     int y = square.y;
 
-    int pieceX = piece.getSquare().x;
-    int pieceY = piece.getSquare().y;
+    int pieceX = piece->getSquare().x;
+    int pieceY = piece->getSquare().y;
 
     if (x == pieceX && y == pieceY) return false;
+    if (!piece->isValidMove(square)) return false;
 
     return true;
 }
