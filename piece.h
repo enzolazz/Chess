@@ -1,5 +1,6 @@
 #include <SFML/Graphics.hpp>
 #include <string>
+#include <cmath>
 #include <iostream>
 
 struct Square {
@@ -21,17 +22,15 @@ private:
     sf::Vector2f findSquarePosition(Square square);
 
 public:
-    bool orientation = true;
-
     Piece(char piece, Square square);
 
+    bool isWhite();
     void drag(sf::Vector2f mousePosition);
     void setSquare(Square square);
     Square getSquare();
     sf::Sprite& getSprite();
     char getType();
-    virtual bool isValidMove(Square newSquare) = 0;
-    void toggleOrientation();
+    virtual bool isValidMove(Square newSquare, bool boardOrientation) = 0;
 };
 
 Piece::Piece(char piece, Square square)
@@ -59,6 +58,9 @@ void Piece::setTexture(char piece) {
     });
 }
 
+bool Piece::isWhite() {
+    return std::isupper(getType());
+}
 void Piece::drag(sf::Vector2f mousePosition) {
     sprite->setPosition(mousePosition);
 }
@@ -91,73 +93,125 @@ sf::Vector2f Piece::findSquarePosition(Square square) {
     return pos;
 }
 
-void Piece::toggleOrientation() {
-    orientation = !orientation;
-}
-
 class Pawn : public Piece {
 private:
-    bool isInInitialRow() {
-        int row = getSquare().y + 1;
-        if (std::isupper(getType())) return row == orientation ? 7 : 2;
-        else return row == orientation ? 2 : 7;
-    }
-
+    bool isInInitialRow(bool boardOrientation);
 public:
-    explicit Pawn(char piece, Square square) : Piece(piece, square) {}
-
-    bool isValidMove(Square newSquare) override {
-        std::cout << "Entrou no peão\n";
-        int walk = (isInInitialRow() ? 2 : 1) * (orientation ? 1 : -1);
-        int moveX = getSquare().x - newSquare.x, moveY = getSquare().y - newSquare.y;
-
-        if (moveY == 0 || moveX > 1) return false;
-
-        if (orientation) {
-            if (moveY > walk) return false;
-        } else 
-            if (moveY < walk) return false;
-
-        return true;
+    explicit Pawn(char piece, Square square) : Piece(piece, square) {
+        std::cout << "Pawn!\n";
     }
+
+    bool isValidMove(Square newSquare, bool boardOrientation); 
+
 };
 
 class Rook : public Piece {
 public:
-    explicit Rook(char piece, Square square) : Piece(piece, square) {}
+    explicit Rook(char piece, Square square) : Piece(piece, square) {
+        std::cout << "Rook!\n";
+    }
 
-    bool isValidMove(Square newSquare) {return true;}
+    bool isValidMove(Square newSquare, bool boardOrientation); 
 };
 
 class Bishop: public Piece {
 public:
-    explicit Bishop(char piece, Square square) : Piece(piece, square) {}
+    explicit Bishop(char piece, Square square) : Piece(piece, square) {
+        std::cout << "Bishop!\n";
+    }
 
-    bool isValidMove(Square newSquare) {return true;}
+    bool isValidMove(Square newSquare, bool boardOrientation); 
 };
 
 class Knight: public Piece {
 public:
-    explicit Knight(char piece, Square square) : Piece(piece, square) {}
+    explicit Knight(char piece, Square square) : Piece(piece, square) {
+        std::cout << "Knight!\n";
+    }
 
-    bool isValidMove(Square newSquare) {return true;}
+    bool isValidMove(Square newSquare, bool boardOrientation); 
 };
 
 class King: public Piece {
 public:
-    explicit King(char piece, Square square) : Piece(piece, square) {}
+    explicit King(char piece, Square square) : Piece(piece, square) {
+        std::cout << "King!\n";
+    }
 
-    bool isValidMove(Square newSquare) {return true;}
+    bool isValidMove(Square newSquare, bool boardOrientation); 
 };
 
 class Queen: public Piece {
 public:
-    explicit Queen(char piece, Square square) : Piece(piece, square) {}
+    explicit Queen(char piece, Square square) : Piece(piece, square) {
+        std::cout << "Queen!\n";
+    }
 
-    bool isValidMove(Square newSquare) {return true;}
+    bool isValidMove(Square newSquare, bool boardOrientation); 
 };
 
 
+bool Pawn::isInInitialRow(bool boardOrientation)  {
+    int row = getSquare().y + 1;
+    int initial;
 
+    if (isWhite()) {
+        if (boardOrientation) initial = 7;
+        else initial = 2;
+    } else {
+        if (boardOrientation) initial = 2;
+        else initial = 7;
+    }
+
+    return initial == row;
+}
+
+bool Pawn::isValidMove(Square newSquare, bool boardOrientation) {
+    bool initial = isInInitialRow(boardOrientation);
+
+    int walk = (initial ? 2 : 1) * (boardOrientation ? 1 : -1);
+    int moveX = getSquare().x - newSquare.x, moveY = getSquare().y - newSquare.y;
+
+    if(!isWhite()) moveY *= -1;
+
+    if ( (moveY > 0 && moveY <= walk) && (moveX >= -1 && moveX <= 1) )
+        return true;
+
+    return false;
+}
+
+bool Rook::isValidMove(Square newSquare, bool boardOrientation) {
+    int x = getSquare().x, y = getSquare().y;
+
+    if (abs(x - newSquare.x) > 0 && (y - newSquare.y == 0) ||
+        abs(y - newSquare.y) > 0 && (x - newSquare.x == 0))
+        return true;
+
+    return false;
+} 
+
+bool Knight::isValidMove(Square newSquare, bool boardOrientation) {
+    return true;
+} 
+ 
+bool Bishop::isValidMove(Square newSquare, bool boardOrientation) {
+    int x = getSquare().x, y = getSquare().y;
+
+    if (abs(x - newSquare.x) == abs(y - newSquare.y))
+        return true;
+
+    return false;
+}
+bool King::isValidMove(Square newSquare, bool boardOrientation) {
+    int x = getSquare().x, y = getSquare().y;
+
+    if (abs(x - newSquare.x) <= 1 && abs(y - newSquare.y) <= 1)
+        return true;
+
+    return false;
+}
+bool Queen::isValidMove(Square newSquare, bool boardOrientation) {
+    return true;
+}
 
 

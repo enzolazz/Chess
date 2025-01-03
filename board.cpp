@@ -1,6 +1,7 @@
 #include "board.h"
 
 Board::Board(float squareSize, std::string piecesSetup) : squareSize(squareSize) {
+    orientation = true;
     for (int j = 0; j < 8; j++) {
         for (int i = 0; i < 8; i++) {
             board[i][j].setSize({squareSize, squareSize});
@@ -35,26 +36,27 @@ Piece* Board::getPiece(int x, int y) {
     return pieces[x][y];
 }
 
-void Board::setPiece(char pieceType, Square square) {
-    Piece *piece;
-    switch (std::tolower(pieceType)) {
+Piece* Board::createPiece(char piece, Square square) {
+    switch (std::tolower(piece)) {
         case 'p':
-            piece = new Pawn(pieceType, square);
+            return new Pawn(piece, square);
         case 'r':
-            piece = new Rook(pieceType, square);
+            return new Rook(piece, square);
         case 'n':
-            piece = new Knight(pieceType, square);
+            return new Knight(piece, square);
         case 'b':
-            piece = new Bishop(pieceType, square);
+            return new Bishop(piece, square);
         case 'k':
-            piece = new King(pieceType, square);
+            return new King(piece, square);
         case 'q':
-            piece = new Queen(pieceType, square);
+            return new Queen(piece, square);
         default:
-            break;
+            std::cout << "Error!\n";
+            return nullptr;
     }
-
-    pieces[square.x][square.y] = piece;
+}
+void Board::setPiece(char pieceType, Square square) {
+    pieces[square.x][square.y] = createPiece(pieceType, square);
 }
 
 void Board::setPiece(Piece* piece, Square square) {
@@ -99,4 +101,8 @@ void Board::swap(T*& a, T*& b) {
         a = nullptr;
     } else 
         std::swap(a, b);
+}
+
+bool Board::getOrientation() {
+    return orientation;
 }

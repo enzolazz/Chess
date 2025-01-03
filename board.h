@@ -8,6 +8,7 @@ private:
 
     float squareSize;
     std::vector<std::vector<Piece*>> pieces = std::vector<std::vector<Piece*>> (8, std::vector<Piece*>(8));
+    bool orientation;
 
     void initialBoard(std::string setup);
     void setPiece(char pieceType, Square square);
@@ -22,4 +23,6 @@ public:
     void movePiece(Piece* piece, Square square);
     void invertPosition();
     void setColor(sf::Color newColor);
+    Piece* createPiece(char piece, Square square);
+    bool getOrientation();
 };

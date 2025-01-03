@@ -89,9 +89,7 @@ bool Game::isLegalMove(Piece* piece, Square square){
     int pieceY = piece->getSquare().y;
 
     if (x == pieceX && y == pieceY) return false;
-    if (!piece->isValidMove(square)) return false;
-
-    return true;
+    return piece->isValidMove(square, board->getOrientation());
 }
 
 bool Game::turnCheck(char pieceType) {
