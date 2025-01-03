@@ -22,6 +22,7 @@ public:
     bool piecePressed(const sf::Vector2i &position);
     void pieceReleased();
     void pieceDrag();
+    void showAvailableSquares(Piece* piece);
     void switchSides();
 };
 
@@ -56,7 +57,7 @@ bool Game::piecePressed(const sf::Vector2i &position) {
         return false;
     }
 
-    std::cout << "Clicked piece " << _moving->getType() << " at (" << x << ", " << y << ")" << std::endl;
+    //std::cout << "Clicked piece " << _moving->getType() << " at (" << x << ", " << y << ")" << std::endl;
     return true;
 }
 
@@ -88,8 +89,15 @@ bool Game::isLegalMove(Piece* piece, Square square){
     int pieceX = piece->getSquare().x;
     int pieceY = piece->getSquare().y;
 
-    if (x == pieceX && y == pieceY) return false;
-    return piece->isValidMove(square, board->getOrientation());
+    if (x == pieceX && y == pieceY)
+        showAvailableSquares(piece);
+    else if (piece->isValidMove(square, board->getOrientation())) {
+        // check if piece can move there.
+        // if all checks, return true;
+        return true;
+    }
+
+    return false;
 }
 
 bool Game::turnCheck(char pieceType) {
@@ -103,4 +111,8 @@ void Game::toggleTurn() {
 
 void Game::switchSides() {
    board->invertPosition(); 
+}
+
+void Game::showAvailableSquares(Piece* piece) {
+    std::cout << "Imagine available squares :)\n";
 }
