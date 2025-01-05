@@ -91,6 +91,9 @@ void Game::pieceReleased() {
                                    board->getOrientation());
         moves.push(move);
         redoMoves = std::stack<move_tuple>();
+
+        board->resetColors();
+        board->paintMove(oldSquare, movingSquare);
     }
 
     board->movePiece(_moving, movingSquare);
@@ -175,7 +178,6 @@ void Game::undo() {
     if (moves.empty()) return;
 
     move_tuple lastMove (moves.top());
-    redoMoves.push(lastMove);
     moves.pop();
 
     Piece* movedPiece = std::get<0>(lastMove);
@@ -183,6 +185,8 @@ void Game::undo() {
 
     Square oldSquare = std::get<1>(lastMove);
     Square newSquare = std::get<3>(lastMove);
+
+    board->resetColors();
 
     bool sameOrientation = std::get<4>(lastMove) != board->getOrientation();
     if (sameOrientation) board->invertPosition();
@@ -196,17 +200,22 @@ void Game::undo() {
         ((King*) movedPiece)->unmoved();
         undo();
     } else toggleTurn();
+
+    redoMoves.push(lastMove);
 }
 
 void Game::redo() {
     if (redoMoves.empty()) return;
 
     move_tuple undoed (redoMoves.top());
-    moves.push(undoed);
     redoMoves.pop();
 
     Piece* movedPiece = std::get<0>(undoed);
+    Square oldSquare = std::get<1>(undoed);
     Square newSquare = std::get<3>(undoed);
+
+    board->resetColors();
+    board->paintMove(oldSquare, newSquare);
 
     bool sameOrientation = std::get<4>(undoed) != board->getOrientation();
     if (sameOrientation) board->invertPosition();
@@ -215,7 +224,12 @@ void Game::redo() {
 
     if (sameOrientation) board->invertPosition();
 
-    toggleTurn();
+    if (std::tolower(movedPiece->getType()) == 'k' && abs(oldSquare.x - newSquare.x) == 2) {
+        ((King*) movedPiece)->moved();
+        redo();
+    } else toggleTurn();
+
+    moves.push(undoed);
 }
 
 void Game::toggleTurn() { 

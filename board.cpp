@@ -7,12 +7,16 @@ Board::Board(float squareSize, std::string piecesSetup) : squareSize(squareSize)
             board[i][j].setSize({squareSize, squareSize});
             board[i][j].setPosition({i * squareSize, j * squareSize});
 
-            sf::Color color = (i + j) % 2 == 0 ? whiteColor : blackColor;
+            sf::Color color = findColor(i, j);
             board[i][j].setFillColor(color);
         }
     }
 
     initialBoard(piecesSetup);
+}
+
+sf::Color Board::findColor(int i, int j) {
+    return (i + j) % 2 == 0 ? whiteColor : blackColor;
 }
 
 void Board::initialBoard(std::string piecesSetup) {
@@ -107,4 +111,18 @@ void Board::swap(T*& a, T*& b) {
 
 bool Board::getOrientation() {
     return orientation;
+}
+
+void Board::paintMove(Square old, Square moved) {
+    board[old.x][old.y].setFillColor(moveColor);
+    board[moved.x][moved.y].setFillColor(moveColor);
+}
+
+void Board::resetColors() {
+    for (int j = 0; j < 8; j++) {
+        for (int i = 0; i < 8; i++) {
+            sf::Color color = findColor(i, j);
+            board[i][j].setFillColor(color);
+        }
+    }
 }

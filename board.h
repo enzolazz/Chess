@@ -5,11 +5,13 @@ class Board {
 private:
     sf::Color whiteColor = sf::Color(240, 217, 181); // Branco clássico
     sf::Color blackColor = sf::Color(181, 136, 99);  // Marrom clássico
+    sf::Color moveColor = sf::Color(237, 234, 83);  // Marrom clássico
 
     float squareSize;
     std::vector<std::vector<Piece*>> pieces = std::vector<std::vector<Piece*>> (8, std::vector<Piece*>(8));
     bool orientation;
 
+    sf::Color findColor(int i, int j);
     void initialBoard(std::string setup);
     void setPiece(char pieceType, Square square);
     void setPiece(Piece *piece, Square square);
@@ -24,5 +26,7 @@ public:
     void invertPosition();
     void setColor(sf::Color newColor);
     Piece* createPiece(char piece, Square square);
+    void paintMove(Square old, Square moved);
+    void resetColors();
     bool getOrientation();
 };
