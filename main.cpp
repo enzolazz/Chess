@@ -33,6 +33,14 @@ int main() {
                 event->getIf<sf::Event::KeyPressed>()->code == sf::Keyboard::Key::R)
                 game.switchSides();
 
+            if (event->is<sf::Event::KeyPressed>() &&
+                event->getIf<sf::Event::KeyPressed>()->code == sf::Keyboard::Key::Left)
+                game.undo();
+
+            if (event->is<sf::Event::KeyPressed>() &&
+                event->getIf<sf::Event::KeyPressed>()->code == sf::Keyboard::Key::Right)
+                game.redo();
+
             if (moving)
                 game.pieceDrag();
         }

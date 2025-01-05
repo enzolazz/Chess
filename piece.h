@@ -30,7 +30,8 @@ public:
     Square getSquare();
     sf::Sprite& getSprite();
     char getType();
-    virtual bool isValidMove(Square newSquare, bool boardOrientation) = 0;
+    virtual bool isValidMove(Square newSquare, bool pieceCondition) = 0;
+    virtual bool isValidMove(Square newSquare) = 0;
 };
 
 Piece::Piece(char piece, Square square)
@@ -101,15 +102,20 @@ public:
     }
 
     bool isValidMove(Square newSquare, bool boardOrientation); 
+    bool isValidMove(Square newSquare) { return false; }
 
 };
 
 class Rook : public Piece {
+private:
+    bool hasMoved = false;
 public:
     explicit Rook(char piece, Square square) : Piece(piece, square) {
     }
 
-    bool isValidMove(Square newSquare, bool boardOrientation); 
+    bool isValidMove(Square newSquare); 
+    bool isValidMove(Square newSquare, bool boardOrientation) { return false; }
+    bool hasRookMoved() { return hasMoved; }
 };
 
 class Bishop: public Piece {
@@ -117,7 +123,8 @@ public:
     explicit Bishop(char piece, Square square) : Piece(piece, square) {
     }
 
-    bool isValidMove(Square newSquare, bool boardOrientation); 
+    bool isValidMove(Square newSquare); 
+    bool isValidMove(Square newSquare, bool boardOrientation) { return false; }
 };
 
 class Knight: public Piece {
@@ -125,15 +132,21 @@ public:
     explicit Knight(char piece, Square square) : Piece(piece, square) {
     }
 
-    bool isValidMove(Square newSquare, bool boardOrientation); 
+    bool isValidMove(Square newSquare); 
+    bool isValidMove(Square newSquare, bool boardOrientation) { return false; }
 };
 
 class King: public Piece {
+private:
+    bool hasMoved = false;
 public:
     explicit King(char piece, Square square) : Piece(piece, square) {
     }
 
-    bool isValidMove(Square newSquare, bool boardOrientation); 
+    void moved();
+    void unmoved();
+    bool isValidMove(Square newSquare); 
+    bool isValidMove(Square newSquare, bool hasRook); 
 };
 
 class Queen: public Piece {
@@ -141,7 +154,8 @@ public:
     explicit Queen(char piece, Square square) : Piece(piece, square) {
     }
 
-    bool isValidMove(Square newSquare, bool boardOrientation); 
+    bool isValidMove(Square newSquare); 
+    bool isValidMove(Square newSquare, bool boardOrientation) { return false; }
 };
 
 
@@ -174,7 +188,7 @@ bool Pawn::isValidMove(Square newSquare, bool boardOrientation) {
     return false;
 }
 
-bool Rook::isValidMove(Square newSquare, bool boardOrientation) {
+bool Rook::isValidMove(Square newSquare) {
     int x = getSquare().x, y = getSquare().y;
 
     if (abs(x - newSquare.x) > 0 && (y - newSquare.y == 0) ||
@@ -184,7 +198,7 @@ bool Rook::isValidMove(Square newSquare, bool boardOrientation) {
     return false;
 } 
 
-bool Knight::isValidMove(Square newSquare, bool boardOrientation) {
+bool Knight::isValidMove(Square newSquare) {
     int x = getSquare().x, y = getSquare().y;
     int moveX = abs(x - newSquare.x), moveY = abs(y - newSquare.y);
 
@@ -194,7 +208,7 @@ bool Knight::isValidMove(Square newSquare, bool boardOrientation) {
     return false;
 }
  
-bool Bishop::isValidMove(Square newSquare, bool boardOrientation) {
+bool Bishop::isValidMove(Square newSquare) {
     int x = getSquare().x, y = getSquare().y;
 
     if (abs(x - newSquare.x) == abs(y - newSquare.y))
@@ -202,7 +216,9 @@ bool Bishop::isValidMove(Square newSquare, bool boardOrientation) {
 
     return false;
 }
-bool King::isValidMove(Square newSquare, bool boardOrientation) {
+
+
+bool King::isValidMove(Square newSquare) {
     int x = getSquare().x, y = getSquare().y;
 
     if (abs(x - newSquare.x) <= 1 && abs(y - newSquare.y) <= 1)
@@ -211,7 +227,24 @@ bool King::isValidMove(Square newSquare, bool boardOrientation) {
     return false;
 }
 
-bool Queen::isValidMove(Square newSquare, bool boardOrientation) {
+bool King::isValidMove(Square newSquare, bool hasRookMoved) {
+    int x = getSquare().x, y = getSquare().y;
+
+    if ((y - newSquare.y == 0) && ((x - newSquare.x >= 2) || (x - newSquare.x <= -2)))
+        return !hasMoved;
+
+    return false;
+}
+
+void King::moved() {
+    hasMoved = true;
+}
+
+void King::unmoved() {
+    hasMoved = false;
+}
+
+bool Queen::isValidMove(Square newSquare) {
     int x = getSquare().x, y = getSquare().y;
 
     if (abs(x - newSquare.x) == abs(y - newSquare.y))

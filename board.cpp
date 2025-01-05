@@ -89,6 +89,8 @@ void Board::invertPosition() {
             if (pieces[x][y] != nullptr) pieces[x][y]->setSquare(Square{x, y, squareSize});
         }
     }
+
+    orientation = !orientation;
 }
 
 template <typename T>
