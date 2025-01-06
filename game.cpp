@@ -5,15 +5,16 @@
 #include <SFML/Graphics.hpp>
 
 typedef std::tuple<Piece*, Square, Piece*, Square, bool> move_tuple;
+typedef std::vector<sf::CircleShape> circle_move;
 
 class Game {
 private:
     sf::RenderWindow& _window;
-    float _squareSize;
-    bool _isWhiteMove = true;
-    std::string _initialBoard = "rnbqkbnrpppppppp8888PPPPPPPPRNBQKBNR";
+    float squareSize;
+    bool whiteTurn = true;
+    std::string initialBoard = "rnbqkbnrpppppppp8888PPPPPPPPRNBQKBNR";
     Board* board;
-    Piece* _moving = nullptr;
+    Piece* moving = nullptr;
     std::stack<move_tuple> moves;
     std::stack<move_tuple> redoMoves;
 
@@ -24,18 +25,19 @@ public:
     Game(sf::RenderWindow& window, float squareSize);
 
     void draw();
-    bool isWhiteMove() const { return _isWhiteMove; }
+    bool isWhiteMove() const { return whiteTurn; }
     bool piecePressed(const sf::Vector2i &position);
     void pieceReleased();
     void pieceDrag();
     void undo();
     void redo();
-    void showAvailableSquares(Piece* piece);
+    void showAvailableSquares();
+    bool pieceSelected();
     void switchSides();
 };
 
-Game::Game(sf::RenderWindow& window, float squareSize) : _window(window), _squareSize(squareSize) {
-    board = new Board(squareSize, _initialBoard);
+Game::Game(sf::RenderWindow& window, float squareSize) : _window(window), squareSize(squareSize) {
+    board = new Board(squareSize, initialBoard);
 }
 
 void Game::draw() {
@@ -46,47 +48,52 @@ void Game::draw() {
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
             Piece* piece = board->getPiece(i, j);
-            if (piece != nullptr && piece != _moving)
+            if (piece != nullptr && piece != moving)
                 _window.draw(piece->getSprite());
         }
     }
 
-    if (_moving != nullptr)
-        _window.draw(_moving->getSprite());
+    if (moving != nullptr)
+    {
+        showAvailableSquares();
+        _window.draw(moving->getSprite());
+    }
 }
 
 bool Game::piecePressed(const sf::Vector2i &position) {
-    int x = position.x / _squareSize;
-    int y = position.y / _squareSize;
+    int x = position.x / squareSize;
+    int y = position.y / squareSize;
 
-    _moving = board->getPiece(x, y);
-    if (_moving == nullptr || !turnCheck(_moving->getType())) {
-        _moving = nullptr;
+    moving = board->getPiece(x, y);
+    if (moving == nullptr || !turnCheck(moving->getType())) {
+        moving = nullptr;
         return false;
     }
 
-    //std::cout << "Clicked piece " << _moving->getType() << " at (" << x << ", " << y << ")" << std::endl;
+    board->resetColors();
+
+    //std::cout << "Clicked piece " << moving->getType() << " at (" << x << ", " << y << ")" << std::endl;
     return true;
 }
 
 void Game::pieceDrag() {
-    if (_moving == nullptr) return;
+    if (moving == nullptr) return;
 
-    _moving->drag(static_cast<sf::Vector2f>(sf::Mouse::getPosition(_window)));
+    moving->drag(static_cast<sf::Vector2f>(sf::Mouse::getPosition(_window)));
 }
 
 void Game::pieceReleased() {
-    Square oldSquare = _moving->getSquare();
+    Square oldSquare = moving->getSquare();
 
-    sf::Vector2f newPosition = _moving->getSprite().getPosition();
-    Square movingSquare =  {(int) (newPosition.x / _squareSize),
-                            (int) (newPosition.y / _squareSize), _squareSize};
+    sf::Vector2f newPosition = moving->getSprite().getPosition();
+    Square movingSquare =  {(int) (newPosition.x / squareSize),
+                            (int) (newPosition.y / squareSize), squareSize};
 
-    bool legalMove = isLegalMove(_moving, &movingSquare);
+    bool legalMove = isLegalMove(moving, &movingSquare);
     if (!legalMove)
         movingSquare = oldSquare;
     else {
-        move_tuple move (_moving, oldSquare,
+        move_tuple move (moving, oldSquare,
                                    board->getPiece(movingSquare.x, movingSquare.y), movingSquare,
                                    board->getOrientation());
         moves.push(move);
@@ -96,11 +103,13 @@ void Game::pieceReleased() {
         board->paintMove(oldSquare, movingSquare);
     }
 
-    board->movePiece(_moving, movingSquare);
+    board->movePiece(moving, movingSquare);
 
-    _moving = nullptr;
-
-    if (legalMove) toggleTurn();
+    if (legalMove) 
+    {
+        moving = nullptr;
+        toggleTurn();
+    }
 }
 
 bool Game::isLegalMove(Piece* piece, Square* square){
@@ -110,9 +119,8 @@ bool Game::isLegalMove(Piece* piece, Square* square){
     int pieceX = piece->getSquare().x;
     int pieceY = piece->getSquare().y;
 
-    if (x == pieceX && y == pieceY)
-        showAvailableSquares(piece);
-    else {
+    if (x != pieceX || y != pieceY)
+    {
         bool isValid;
         int dX = pieceX - x;
 
@@ -154,7 +162,7 @@ bool Game::isLegalMove(Piece* piece, Square* square){
                     castleRook = 3;
                     dX = -2;
                 }
-                Square castledSquare{rX + castleRook, rY, _squareSize};
+                Square castledSquare{rX + castleRook, rY, squareSize};
 
                 move_tuple rookCastled(rook, rook->getSquare(), nullptr, castledSquare, board->getOrientation());
                 moves.push(rookCastled);
@@ -171,7 +179,7 @@ bool Game::isLegalMove(Piece* piece, Square* square){
 }
 
 bool Game::turnCheck(char pieceType) {
-    return (_isWhiteMove && std::isupper(pieceType)) || (!_isWhiteMove && std::islower(pieceType));
+    return (whiteTurn && std::isupper(pieceType)) || (!whiteTurn && std::islower(pieceType));
 }
 
 void Game::undo() {
@@ -233,7 +241,7 @@ void Game::redo() {
 }
 
 void Game::toggleTurn() { 
-    _isWhiteMove = !_isWhiteMove;
+    whiteTurn = !whiteTurn;
     //switchSides();
 }
 
@@ -241,6 +249,30 @@ void Game::switchSides() {
    board->invertPosition(); 
 }
 
-void Game::showAvailableSquares(Piece* piece) {
-    std::cout << "Imagine available squares :)\n";
+void Game::showAvailableSquares() {
+    square_list moves = moving->getMoves();
+    circle_move circles;
+
+    sf::Color gray = sf::Color(146, 146, 146, 146);
+    for (Square square : moves) 
+    {
+        sf::CircleShape circle(12.f);
+        circle.setFillColor(gray);
+
+        circle.setOrigin({12.f, 12.f});
+
+        sf::Vector2f pos(square.x * square.size + square.size / 2, square.y * square.size + square.size / 2);
+        circle.setPosition({pos.x, pos.y});
+
+        circles.push_back(circle);
+    }
+
+    for (auto shape : circles)
+    {
+        _window.draw(shape);
+    }
+}
+
+bool Game::pieceSelected() {
+    return moving != nullptr;
 }

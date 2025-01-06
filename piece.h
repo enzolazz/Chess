@@ -9,6 +9,8 @@ struct Square {
     float size;
 };
 
+typedef std::vector<Square> square_list;
+
 class Piece {
 
 private:
@@ -26,6 +28,7 @@ public:
 
     bool isWhite();
     void drag(sf::Vector2f mousePosition);
+    virtual square_list getMoves() = 0;
     void setSquare(Square square);
     Square getSquare();
     sf::Sprite& getSprite();
@@ -101,6 +104,7 @@ public:
     explicit Pawn(char piece, Square square) : Piece(piece, square) {
     }
 
+    square_list getMoves();
     bool isValidMove(Square newSquare, bool boardOrientation); 
     bool isValidMove(Square newSquare) { return false; }
 
@@ -113,6 +117,7 @@ public:
     explicit Rook(char piece, Square square) : Piece(piece, square) {
     }
 
+    square_list getMoves();
     bool isValidMove(Square newSquare); 
     bool isValidMove(Square newSquare, bool boardOrientation) { return false; }
     bool hasRookMoved() { return hasMoved; }
@@ -123,6 +128,7 @@ public:
     explicit Bishop(char piece, Square square) : Piece(piece, square) {
     }
 
+    square_list getMoves();
     bool isValidMove(Square newSquare); 
     bool isValidMove(Square newSquare, bool boardOrientation) { return false; }
 };
@@ -132,6 +138,7 @@ public:
     explicit Knight(char piece, Square square) : Piece(piece, square) {
     }
 
+    square_list getMoves();
     bool isValidMove(Square newSquare); 
     bool isValidMove(Square newSquare, bool boardOrientation) { return false; }
 };
@@ -145,6 +152,7 @@ public:
 
     void moved();
     void unmoved();
+    square_list getMoves();
     bool isValidMove(Square newSquare); 
     bool isValidMove(Square newSquare, bool hasRook); 
 };
@@ -154,6 +162,7 @@ public:
     explicit Queen(char piece, Square square) : Piece(piece, square) {
     }
 
+    square_list getMoves();
     bool isValidMove(Square newSquare); 
     bool isValidMove(Square newSquare, bool boardOrientation) { return false; }
 };
@@ -257,4 +266,33 @@ bool Queen::isValidMove(Square newSquare) {
     return false;
 }
 
+square_list Pawn::getMoves() {
+    square_list s;
+
+    s.push_back(Square{3, 3, getSquare().size});
+    s.push_back(Square{3, 4, getSquare().size});
+    s.push_back(Square{3, 5, getSquare().size});
+
+    return s;
+}
+
+square_list Bishop::getMoves() {
+    return std::vector<Square>();
+}
+
+square_list Knight::getMoves() {
+    return std::vector<Square>();
+}
+
+square_list Rook::getMoves() {
+    return std::vector<Square>();
+}
+
+square_list King::getMoves() {
+    return std::vector<Square>();
+}
+
+square_list Queen::getMoves() {
+    return std::vector<Square>();
+}
 

@@ -7,7 +7,7 @@ const int squareSize = 110;
 
 int main() {
     sf::RenderWindow window(sf::VideoMode({squareSize * 8, squareSize * 8}), "Chess-app");
-    bool moving = false, legalMove = false;
+    bool moving = false;
 
     Game game(window, squareSize);
     while (window.isOpen()) {
