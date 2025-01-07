@@ -21,6 +21,7 @@ private:
     bool isLegalMove(Piece* piece, Square* newSquare);
     bool turnCheck(char pieceType);
     void toggleTurn();
+    char getPieceType(Piece* piece);
 public:
     Game(sf::RenderWindow& window, float squareSize);
 
@@ -123,56 +124,82 @@ bool Game::isLegalMove(Piece* piece, Square* square){
     {
         bool isValid;
         int dX = pieceX - x;
+        int dY = pieceY - y;
 
         Rook* rook = nullptr;
-        switch (std::tolower(piece->getType())) {
+        Piece* newSquarePiece = board->getPiece(x, y);
+        switch (getPieceType(piece))
+        {
             case 'p':
                 isValid = piece->isValidMove(*square, board->getOrientation());
+
+                std::cout << isValid << std::endl;
+                if (!isValid) return false;
+
+                if (dX != 0 && abs(dY) == 1 && 
+                    (newSquarePiece == nullptr || 
+                    newSquarePiece->isWhite() == piece->isWhite()))
+                        return false;
+
+                if (dX == 0)
+                {
+                    int orientationDir = board->getOrientation() ? 1 : -1;
+
+                    int i = pieceY;
+                    do
+                    {
+                        (piece->isWhite()) ? i -= 1 * orientationDir : i += 1 * orientationDir;
+                        if (board->getPiece(x, i) != nullptr) return false;
+                    } while (i != y);
+
+                }
                 break;
             case 'k':
-                if (dX <= -2) {
+                if (dX <= -2)
+                {
                     if (piece->isWhite()) rook = (Rook*) board->getPiece(7, 7);
                     else rook = (Rook*) board->getPiece(7, 0);
-                } else if (dX >= 2) {
+                } else if (dX >= 2)
+                {
                     if (piece->isWhite()) rook = (Rook*) board->getPiece(0, 7);
                     else rook = (Rook*) board->getPiece(0, 0);
                 }
 
                 if (rook == nullptr) isValid = piece->isValidMove(*square);
                 else isValid = piece->isValidMove(*square, rook->hasRookMoved());
+
+                if (!isValid) return false;
+
+                ((King*) piece)->moved();
+
+                // Will castle
+                if (rook != nullptr) {
+                    int rX = rook->getSquare().x, rY = rook->getSquare().y;
+
+                        int castleRook = -2;
+                    dX = 2;
+                    if (rook->getSquare().x == 0) 
+                    {
+                        castleRook = 3;
+                        dX = -2;
+                    }
+
+                    Square castledSquare{rX + castleRook, rY, squareSize};
+
+                    move_tuple rookCastled(rook, rook->getSquare(), nullptr, castledSquare, board->getOrientation());
+                    moves.push(rookCastled);
+
+                    board->movePiece(rook, castledSquare);
+
+                    square->x = pieceX + dX;
+                }
                 break;
             default:
                 isValid = piece->isValidMove(*square);
                 break;
         }
-        if (isValid) {
-        // check if piece can move there.
-        // if all checks, return true;
-            if (std::tolower(piece->getType()) == 'k') {
-                King* king = (King*) piece;
-                king->moved();
-            }
 
-            if (rook != nullptr) {
-                int rX = rook->getSquare().x, rY = rook->getSquare().y;
-
-                int castleRook = -2;
-                dX = 2;
-                if (rook->getSquare().x == 0) {
-                    castleRook = 3;
-                    dX = -2;
-                }
-                Square castledSquare{rX + castleRook, rY, squareSize};
-
-                move_tuple rookCastled(rook, rook->getSquare(), nullptr, castledSquare, board->getOrientation());
-                moves.push(rookCastled);
-
-                board->movePiece(rook, castledSquare);
-
-                square->x = pieceX + dX;
-            }
             return true;
-        }
     }
 
     return false;
@@ -204,7 +231,7 @@ void Game::undo() {
 
     if (sameOrientation) board->invertPosition();
 
-    if (std::tolower(movedPiece->getType()) == 'k' && abs(oldSquare.x - newSquare.x) == 2) {
+    if (getPieceType(movedPiece) == 'k' && abs(oldSquare.x - newSquare.x) == 2) {
         ((King*) movedPiece)->unmoved();
         undo();
     } else toggleTurn();
@@ -232,7 +259,7 @@ void Game::redo() {
 
     if (sameOrientation) board->invertPosition();
 
-    if (std::tolower(movedPiece->getType()) == 'k' && abs(oldSquare.x - newSquare.x) == 2) {
+    if (getPieceType(movedPiece) == 'k' && abs(oldSquare.x - newSquare.x) == 2) {
         ((King*) movedPiece)->moved();
         redo();
     } else toggleTurn();
@@ -275,4 +302,8 @@ void Game::showAvailableSquares() {
 
 bool Game::pieceSelected() {
     return moving != nullptr;
+}
+
+char Game::getPieceType(Piece* piece) {
+    return std::tolower(piece->getType()); 
 }

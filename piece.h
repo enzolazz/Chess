@@ -186,10 +186,11 @@ bool Pawn::isInInitialRow(bool boardOrientation)  {
 bool Pawn::isValidMove(Square newSquare, bool boardOrientation) {
     bool initial = isInInitialRow(boardOrientation);
 
-    int walk = (initial ? 2 : 1) * (boardOrientation ? 1 : -1);
+    int walk = (initial ? 2 : 1);
     int moveX = getSquare().x - newSquare.x, moveY = getSquare().y - newSquare.y;
 
-    if(!isWhite()) moveY *= -1;
+    if (!isWhite()) moveY *= -1;
+    if (!boardOrientation) moveY *= -1;
 
     if ( (moveY > 0 && moveY <= walk) && (moveX >= -1 && moveX <= 1) )
         return true;
