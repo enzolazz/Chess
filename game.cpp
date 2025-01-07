@@ -133,11 +133,10 @@ bool Game::isLegalMove(Piece* piece, Square* square){
             case 'p':
                 isValid = piece->isValidMove(*square, board->getOrientation());
 
-                std::cout << isValid << std::endl;
                 if (!isValid) return false;
 
-                if (dX != 0 && abs(dY) == 1 && 
-                    (newSquarePiece == nullptr || 
+                if (dX != 0 &&
+                    (abs(dY) != 1 || newSquarePiece == nullptr || 
                     newSquarePiece->isWhite() == piece->isWhite()))
                         return false;
 
