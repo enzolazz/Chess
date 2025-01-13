@@ -22,6 +22,7 @@ private:
     bool turnCheck(char pieceType);
     void toggleTurn();
     char getPieceType(Piece* piece);
+    bool sameColorCapture(Piece* moved, Piece* taken);
 public:
     Game(sf::RenderWindow& window, float squareSize);
 
@@ -193,12 +194,38 @@ bool Game::isLegalMove(Piece* piece, Square* square){
                     square->x = pieceX + dX;
                 }
                 break;
+            case 'n':
+                isValid = piece->isValidMove(*square);
+
+                if (!isValid) return false;
+
+                if (sameColorCapture(piece, newSquarePiece)) return false;
+                break;
+            case 'b':
+                isValid = piece->isValidMove(*square);
+
+                if (!isValid) return false;
+
+                {
+                    int i = pieceX, j = pieceY;
+
+                    do {
+                        (dX < 0) ? i++ : i--;
+                        (dY < 0) ? j++ : j--;
+
+                        newSquarePiece = board->getPiece(i, j);
+
+                        if (sameColorCapture(piece, newSquarePiece)) return false;
+                    } while (i != x);
+                }
+
+                break;
             default:
                 isValid = piece->isValidMove(*square);
                 break;
         }
 
-            return true;
+        return true;
     }
 
     return false;
@@ -306,3 +333,12 @@ bool Game::pieceSelected() {
 char Game::getPieceType(Piece* piece) {
     return std::tolower(piece->getType()); 
 }
+
+bool Game::sameColorCapture(Piece* moved, Piece* taken) {
+    if (taken == nullptr) return false;
+
+    if (moved->isWhite() != taken->isWhite()) return false;
+
+    return true;
+}
+
