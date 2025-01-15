@@ -57,7 +57,7 @@ void Game::draw() {
 
     if (moving != nullptr)
     {
-        showAvailableSquares();
+        //showAvailableSquares();
         _window.draw(moving->getSprite());
     }
 }
@@ -121,18 +121,22 @@ bool Game::isLegalMove(Piece* piece, Square* square){
     int pieceX = piece->getSquare().x;
     int pieceY = piece->getSquare().y;
 
+    bool isValid;
     if (x != pieceX || y != pieceY)
     {
-        bool isValid;
+        char pieceType = getPieceType(piece);
         int dX = pieceX - x;
         int dY = pieceY - y;
 
         Rook* rook = nullptr;
         Piece* newSquarePiece = board->getPiece(x, y);
-        switch (getPieceType(piece))
+
+        isValid = piece->isValidMove(*square);
+
+        switch (pieceType)
         {
             case 'p':
-                isValid = piece->isValidMove(*square, board->getOrientation());
+                isValid = ((Pawn*) piece)->isValidMove(*square, board->getOrientation());
 
                 if (!isValid) return false;
 
@@ -165,19 +169,17 @@ bool Game::isLegalMove(Piece* piece, Square* square){
                     else rook = (Rook*) board->getPiece(0, 0);
                 }
 
-                if (rook == nullptr) isValid = piece->isValidMove(*square);
-                else isValid = piece->isValidMove(*square, rook->hasRookMoved());
-
                 if (!isValid) return false;
 
-                ((King*) piece)->moved();
-
                 // Will castle
-                if (rook != nullptr) {
+                if (rook != nullptr)
+                {
+                    if (!rook->hasMoved()) return false;
                     int rX = rook->getSquare().x, rY = rook->getSquare().y;
 
-                        int castleRook = -2;
+                    int castleRook = -2;
                     dX = 2;
+
                     if (rook->getSquare().x == 0) 
                     {
                         castleRook = 3;
@@ -186,49 +188,58 @@ bool Game::isLegalMove(Piece* piece, Square* square){
 
                     Square castledSquare{rX + castleRook, rY, squareSize};
 
+                    {
+                        int i = pieceX;
+
+                        do {
+                            (dX > 0) ? i++ : i--;
+
+                            newSquarePiece = board->getPiece(i, pieceY);
+
+                            if (sameColorCapture(piece, newSquarePiece)) return false;
+                        } while (i != (pieceX + dX));
+
+                        // Needs guard check
+                    }
+
                     move_tuple rookCastled(rook, rook->getSquare(), nullptr, castledSquare, board->getOrientation());
                     moves.push(rookCastled);
 
                     board->movePiece(rook, castledSquare);
+                    rook->moved();
 
                     square->x = pieceX + dX;
+                } else {
+                    if (sameColorCapture(piece,  newSquarePiece)) return false;
                 }
                 break;
             case 'n':
-                isValid = piece->isValidMove(*square);
-
                 if (!isValid) return false;
 
                 if (sameColorCapture(piece, newSquarePiece)) return false;
                 break;
-            case 'b':
-                isValid = piece->isValidMove(*square);
-
+            default:
                 if (!isValid) return false;
 
                 {
                     int i = pieceX, j = pieceY;
 
                     do {
-                        (dX < 0) ? i++ : i--;
-                        (dY < 0) ? j++ : j--;
+                        if (dX != 0) (dX < 0) ? i++ : i--;
+                        if (dY != 0) (dY < 0) ? j++ : j--;
 
                         newSquarePiece = board->getPiece(i, j);
 
                         if (sameColorCapture(piece, newSquarePiece)) return false;
-                    } while (i != x);
+                    } while (i != x || j != y);
                 }
-
-                break;
-            default:
-                isValid = piece->isValidMove(*square);
                 break;
         }
-
-        return true;
     }
 
-    return false;
+    piece->moved();
+
+    return isValid;
 }
 
 bool Game::turnCheck(char pieceType) {
@@ -255,12 +266,14 @@ void Game::undo() {
     board->movePiece(movedPiece, oldSquare);
     if (takenPiece != nullptr) board->movePiece(takenPiece, newSquare);
 
+    movedPiece->unmoved();
+
     if (sameOrientation) board->invertPosition();
 
     if (getPieceType(movedPiece) == 'k' && abs(oldSquare.x - newSquare.x) == 2) {
-        ((King*) movedPiece)->unmoved();
         undo();
     } else toggleTurn();
+
 
     redoMoves.push(lastMove);
 }
@@ -283,10 +296,11 @@ void Game::redo() {
 
     board->movePiece(movedPiece, newSquare);
 
+    movedPiece->moved();
+
     if (sameOrientation) board->invertPosition();
 
     if (getPieceType(movedPiece) == 'k' && abs(oldSquare.x - newSquare.x) == 2) {
-        ((King*) movedPiece)->moved();
         redo();
     } else toggleTurn();
 

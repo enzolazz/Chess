@@ -18,6 +18,7 @@ private:
     sf::Sprite* sprite;
     char piece;
     Square square;
+    int move = 0;
 
     void setTexture(char piece); 
     void setSpritePosition(Square square);
@@ -33,8 +34,10 @@ public:
     Square getSquare();
     sf::Sprite& getSprite();
     char getType();
-    virtual bool isValidMove(Square newSquare, bool pieceCondition) = 0;
     virtual bool isValidMove(Square newSquare) = 0;
+    void moved();
+    void unmoved();
+    bool hasMoved();
 };
 
 Piece::Piece(char piece, Square square)
@@ -97,6 +100,18 @@ sf::Vector2f Piece::findSquarePosition(Square square) {
     return pos;
 }
 
+void Piece::moved() {
+    move++;
+}
+
+void Piece::unmoved() {
+    move--;
+}
+
+bool Piece::hasMoved() {
+    return move > 0;
+}
+
 class Pawn : public Piece {
 private:
     bool isInInitialRow(bool boardOrientation);
@@ -111,16 +126,13 @@ public:
 };
 
 class Rook : public Piece {
-private:
-    bool hasMoved = false;
 public:
     explicit Rook(char piece, Square square) : Piece(piece, square) {
     }
 
     square_list getMoves();
     bool isValidMove(Square newSquare); 
-    bool isValidMove(Square newSquare, bool boardOrientation) { return false; }
-    bool hasRookMoved() { return hasMoved; }
+    bool hasRookMoved() { return hasMoved(); }
 };
 
 class Bishop: public Piece {
@@ -130,7 +142,6 @@ public:
 
     square_list getMoves();
     bool isValidMove(Square newSquare); 
-    bool isValidMove(Square newSquare, bool boardOrientation) { return false; }
 };
 
 class Knight: public Piece {
@@ -140,21 +151,15 @@ public:
 
     square_list getMoves();
     bool isValidMove(Square newSquare); 
-    bool isValidMove(Square newSquare, bool boardOrientation) { return false; }
 };
 
 class King: public Piece {
-private:
-    bool hasMoved = false;
 public:
     explicit King(char piece, Square square) : Piece(piece, square) {
     }
 
-    void moved();
-    void unmoved();
     square_list getMoves();
     bool isValidMove(Square newSquare); 
-    bool isValidMove(Square newSquare, bool hasRook); 
 };
 
 class Queen: public Piece {
@@ -164,7 +169,6 @@ public:
 
     square_list getMoves();
     bool isValidMove(Square newSquare); 
-    bool isValidMove(Square newSquare, bool boardOrientation) { return false; }
 };
 
 
@@ -234,24 +238,10 @@ bool King::isValidMove(Square newSquare) {
     if (abs(x - newSquare.x) <= 1 && abs(y - newSquare.y) <= 1)
         return true;
 
-    return false;
-}
-
-bool King::isValidMove(Square newSquare, bool hasRookMoved) {
-    int x = getSquare().x, y = getSquare().y;
-
     if ((y - newSquare.y == 0) && ((x - newSquare.x >= 2) || (x - newSquare.x <= -2)))
-        return !hasMoved;
+        return !hasMoved();
 
     return false;
-}
-
-void King::moved() {
-    hasMoved = true;
-}
-
-void King::unmoved() {
-    hasMoved = false;
 }
 
 bool Queen::isValidMove(Square newSquare) {
