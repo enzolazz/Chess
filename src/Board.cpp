@@ -1,4 +1,6 @@
-#include "board.h"
+#include <iostream>
+#include "../headers/Pieces.h"
+#include "../headers/Board.h"
 
 Board::Board(float squareSize, std::string piecesSetup) : squareSize(squareSize) {
     orientation = true;
@@ -42,21 +44,21 @@ Piece* Board::getPiece(int x, int y) {
 
 Piece* Board::createPiece(char piece, Square square) {
     switch (std::tolower(piece)) {
-        case 'p':
-            return new Pawn(piece, square);
-        case 'r':
-            return new Rook(piece, square);
-        case 'n':
-            return new Knight(piece, square);
-        case 'b':
-            return new Bishop(piece, square);
-        case 'k':
-            return new King(piece, square);
-        case 'q':
-            return new Queen(piece, square);
-        default:
-            std::cout << "Error!\n";
-            return nullptr;
+    case 'p':
+        return new Pawn(piece, square);
+    case 'r':
+        return new Rook(piece, square);
+    case 'n':
+        return new Knight(piece, square);
+    case 'b':
+        return new Bishop(piece, square);
+    case 'k':
+        return new King(piece, square);
+    case 'q':
+        return new Queen(piece, square);
+    default:
+        std::cout << "Error!\n";
+        return nullptr;
     }
 }
 void Board::setPiece(char pieceType, Square square) {
@@ -105,7 +107,7 @@ void Board::swap(T*& a, T*& b) {
     } else if (b == nullptr) {
         b = a;
         a = nullptr;
-    } else 
+    } else
         std::swap(a, b);
 }
 
