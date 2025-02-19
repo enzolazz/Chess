@@ -15,5 +15,5 @@ make
 ## TODO:
 
 - Validations:
-  -- Check
-  -- Checkmate
+    -- Check
+    -- Checkmate
