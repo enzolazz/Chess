@@ -17,3 +17,4 @@ make
 - Validations:
     - Check
     - Checkmate
+    - Castle (pieces scoping castle squares)
