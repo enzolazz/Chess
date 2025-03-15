@@ -3,9 +3,9 @@
 ## Dependencies to be installed:
 
 - CMake
-- Algum compilador de C++ (gcc, clang, MSVC, ...)
-- Algum Build system (make, ninja, ...)
-- Biblioteca SFML 3.X
+- Any C++ compiler (gcc, clang, MSVC, ...)
+- Any Build system (make, ninja, ...)
+- SFML 3.X graphics interface
 
 ## Compiling the project
 
