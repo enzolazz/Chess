@@ -1,13 +1,13 @@
 # Chess game in C++
 
-## Dependências que devem ser instaladas
+## Dependencies to be installed:
 
 - CMake
 - Algum compilador de C++ (gcc, clang, MSVC, ...)
 - Algum Build system (make, ninja, ...)
 - Biblioteca SFML 3.X
 
-# Compilar o projeto
+## Compiling the project
 
 If you're not using an IDE, compile using the following commands:
 
