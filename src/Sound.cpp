@@ -1,4 +1,5 @@
 #include "Sound.h"
+#include <SFML/Audio/SoundSource.hpp>
 #include <iostream>
 
 Sound::Sound() {
@@ -23,11 +24,20 @@ void Sound::loadSound(const std::string &filename) {
     sounds.push_back(std::move(sound));
 }
 
+void Sound::playMove() {
+    if (sounds[7]->getStatus() != sf::SoundSource::Status::Playing) {
+        sounds[0]->play();
+    }
+}
+
+void Sound::playIlegal() {
+    if (sounds[3]->getStatus() != sf::SoundSource::Status::Playing)
+        sounds[3]->play();
+}
+
 void Sound::playStart() { sounds[4]->play(); }
-void Sound::playMove() { sounds[0]->play(); }
 void Sound::playCapture() { sounds[1]->play(); }
 void Sound::playCheck() { sounds[2]->play(); }
-void Sound::playIlegal() { sounds[3]->play(); }
 void Sound::playPromotion() { sounds[6]->play(); }
 void Sound::playEnd() { sounds[5]->play(); }
 void Sound::playCastle() { sounds[7]->play(); }

@@ -3,7 +3,9 @@
 #include <SFML/Audio/Sound.hpp>
 #include <SFML/Audio/SoundBuffer.hpp>
 #include <SFML/Graphics.hpp>
+#include <SFML/System/Vector2.hpp>
 #include <SFML/Window.hpp>
+#include <SFML/Window/Mouse.hpp>
 #include <iostream>
 
 const int squareSize = 110;
@@ -13,21 +15,25 @@ int main() {
 
     Game game(window, squareSize);
 
-    bool moving = false;
+    bool M1Hold = false;
     while (window.isOpen()) {
         while (const std::optional event = window.pollEvent()) {
-            // Window closed or escape key pressed: exit
             if (event->is<sf::Event::Closed>())
                 window.close();
 
             if (const auto *mouse = event->getIf<sf::Event::MouseButtonPressed>()) {
                 switch (mouse->button) {
-                case sf::Mouse::Button::Left:
-                    moving = game.piecePressed(sf::Mouse::getPosition(window));
+                case sf::Mouse::Button::Left: {
+                    sf::Vector2i mousePos = sf::Mouse::getPosition(window);
+                    if (game.piecePressed(mousePos))
+                        M1Hold = true;
+                    else
+                        game.pieceReleased(mousePos);
                     break;
+                }
                 case sf::Mouse::Button::Right:
-                    game.pieceReleased();
-                    moving = false;
+                    game.resetMoving();
+                    M1Hold = false;
                     break;
                 default:
                     break;
@@ -35,9 +41,9 @@ int main() {
             }
 
             if (const auto *mouse = event->getIf<sf::Event::MouseButtonReleased>()) {
-                if (mouse->button == sf::Mouse::Button::Left) {
-                    game.pieceReleased();
-                    moving = false;
+                if (game.pieceSelected() && mouse->button == sf::Mouse::Button::Left) {
+                    game.pieceReleased(sf::Mouse::getPosition(window));
+                    M1Hold = false;
                 }
             }
 
@@ -59,7 +65,7 @@ int main() {
                 }
             }
 
-            if (moving)
+            if (M1Hold)
                 game.pieceDrag();
         }
 

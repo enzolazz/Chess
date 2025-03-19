@@ -36,8 +36,9 @@ class Game {
     void draw();
     bool isWhiteMove();
     bool piecePressed(const sf::Vector2i &position);
-    void pieceReleased();
+    bool pieceReleased(const sf::Vector2i &position);
     void pieceDrag();
+    void resetMoving();
     void undo();
     void redo();
     void showAvailableSquares();

@@ -1,5 +1,13 @@
 #include "Game.h"
 #include "Pieces.h"
+#include <SFML/System/Vector2.hpp>
+#include <iostream>
+
+static Square getSquare(const sf::Vector2i &position, float squareSize) {
+    return {(int)(position.x / squareSize), (int)(position.y / squareSize), squareSize};
+}
+
+static bool sameSquare(Square &a, Square &b) { return a.x == b.x && a.y == b.y; }
 
 Game::Game(sf::RenderWindow &window, float squareSize) : _window(window), squareSize(squareSize) {
     board = new Board(squareSize, initialBoard);
@@ -20,7 +28,7 @@ void Game::draw() {
     }
 
     if (moving != nullptr) {
-        // showAvailableSquares();
+        showAvailableSquares();
         _window.draw(moving->getSprite());
     }
 }
@@ -29,16 +37,15 @@ bool Game::piecePressed(const sf::Vector2i &position) {
     int x = position.x / squareSize;
     int y = position.y / squareSize;
 
-    moving = board->getPiece(x, y);
-    if (moving == nullptr || !turnCheck(moving->getType())) {
-        moving = nullptr;
+    Piece *piece = board->getPiece(x, y);
+    if (piece == nullptr || !turnCheck(piece->getType()))
         return false;
-    }
 
     board->resetColors();
+    moving = piece;
 
-    // std::cout << "Clicked piece " << moving->getType() << " at (" << x << ", "
-    // << y << ")" << std::endl;
+    piece = nullptr;
+    delete piece;
     return true;
 }
 
@@ -49,16 +56,20 @@ void Game::pieceDrag() {
     moving->drag(static_cast<sf::Vector2f>(sf::Mouse::getPosition(_window)));
 }
 
-void Game::pieceReleased() {
+bool Game::pieceReleased(const sf::Vector2i &position) {
+    if (moving == nullptr)
+        return false;
+
     Square pieceSquare = moving->getSquare();
 
-    sf::Vector2f newPosition = moving->getSprite().getPosition();
-    Square movingSquare = {(int)(newPosition.x / squareSize), (int)(newPosition.y / squareSize), squareSize};
+    Square movingSquare = getSquare(position, squareSize);
 
+    size_t length = moves.size();
     if (!isLegalMove(moving, &movingSquare)) {
-        board->movePiece(moving, pieceSquare);
-        sounds.playIlegal();
-        return;
+        resetMoving();
+        if (!sameSquare(pieceSquare, movingSquare))
+            sounds.playIlegal();
+        return false;
     }
     move_tuple move(moving, pieceSquare, board->getPiece(movingSquare.x, movingSquare.y), movingSquare,
                     board->getOrientation());
@@ -68,10 +79,25 @@ void Game::pieceReleased() {
     board->resetColors();
     board->paintMove(pieceSquare, movingSquare);
 
-    board->movePiece(moving, movingSquare) ? sounds.playCapture() : sounds.playMove();
+    bool captured = board->movePiece(moving, movingSquare);
+    if (length != moves.size() - 1)
+        sounds.playCastle();
+    else if (captured)
+        sounds.playCapture();
+    else
+        sounds.playMove();
 
     moving = nullptr;
     toggleTurn();
+
+    return true;
+}
+
+void Game::resetMoving() {
+    if (moving == nullptr)
+        return;
+
+    board->movePiece(moving, moving->getSquare());
 }
 
 bool Game::isLegalMove(Piece *piece, Square *square) {
@@ -241,9 +267,15 @@ void Game::undo() {
         board->invertPosition();
 
     if (getPieceType(movedPiece) == 'k' && abs(oldSquare.x - newSquare.x) == 2) {
+        sounds.playCastle();
         undo();
-    } else
+    } else {
         toggleTurn();
+        if (takenPiece != nullptr)
+            sounds.playCapture();
+        else
+            sounds.playMove();
+    }
 
     redoMoves.push(lastMove);
 }
@@ -274,9 +306,15 @@ void Game::redo() {
         board->invertPosition();
 
     if (getPieceType(movedPiece) == 'k' && abs(oldSquare.x - newSquare.x) == 2) {
+        sounds.playCastle();
         redo();
-    } else
+    } else {
         toggleTurn();
+        if (std::get<2>(undoed) != nullptr)
+            sounds.playCapture();
+        else
+            sounds.playMove();
+    }
 
     moves.push(undoed);
 }
