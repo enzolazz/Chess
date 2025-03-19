@@ -66,15 +66,21 @@ void Board::setPiece(Piece *piece, Square square) {
 
 void Board::deletePiece(int x, int y) { pieces[x][y] = nullptr; }
 
-void Board::movePiece(Piece *piece, Square square) {
+bool Board::movePiece(Piece *piece, Square square) {
     int oldX = piece->getSquare().x;
     int oldY = piece->getSquare().y;
 
     deletePiece(oldX, oldY);
 
-    if (getPiece(square.x, square.y) != nullptr)
+    bool capture = false;
+    if (getPiece(square.x, square.y) != nullptr) {
+        capture = true;
         deletePiece(square.x, square.y);
+    }
+
     setPiece(piece, square);
+
+    return capture;
 }
 
 void Board::invertPosition() {

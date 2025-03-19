@@ -3,6 +3,7 @@
 
 Game::Game(sf::RenderWindow &window, float squareSize) : _window(window), squareSize(squareSize) {
     board = new Board(squareSize, initialBoard);
+    sounds.playStart();
 }
 
 void Game::draw() {
@@ -49,30 +50,28 @@ void Game::pieceDrag() {
 }
 
 void Game::pieceReleased() {
-    Square oldSquare = moving->getSquare();
+    Square pieceSquare = moving->getSquare();
 
     sf::Vector2f newPosition = moving->getSprite().getPosition();
     Square movingSquare = {(int)(newPosition.x / squareSize), (int)(newPosition.y / squareSize), squareSize};
 
-    bool legalMove = isLegalMove(moving, &movingSquare);
-    if (!legalMove)
-        movingSquare = oldSquare;
-    else {
-        move_tuple move(moving, oldSquare, board->getPiece(movingSquare.x, movingSquare.y), movingSquare,
-                        board->getOrientation());
-        moves.push(move);
-        redoMoves = std::stack<move_tuple>();
-
-        board->resetColors();
-        board->paintMove(oldSquare, movingSquare);
+    if (!isLegalMove(moving, &movingSquare)) {
+        board->movePiece(moving, pieceSquare);
+        sounds.playIlegal();
+        return;
     }
+    move_tuple move(moving, pieceSquare, board->getPiece(movingSquare.x, movingSquare.y), movingSquare,
+                    board->getOrientation());
+    moves.push(move);
+    redoMoves = std::stack<move_tuple>();
 
-    board->movePiece(moving, movingSquare);
+    board->resetColors();
+    board->paintMove(pieceSquare, movingSquare);
 
-    if (legalMove) {
-        moving = nullptr;
-        toggleTurn();
-    }
+    board->movePiece(moving, movingSquare) ? sounds.playCapture() : sounds.playMove();
+
+    moving = nullptr;
+    toggleTurn();
 }
 
 bool Game::isLegalMove(Piece *piece, Square *square) {

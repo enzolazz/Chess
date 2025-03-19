@@ -17,8 +17,8 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
 endif()
 
 # Find SFML packages
-find_package(SFML 3 REQUIRED COMPONENTS Graphics Window System)
+find_package(SFML 3 REQUIRED COMPONENTS Graphics Window Audio System)
 
 # Link SFML libraries
-target_link_libraries(${TARGET_NAME} PRIVATE SFML::Graphics SFML::Window SFML::System)
+target_link_libraries(${TARGET_NAME} PRIVATE SFML::Graphics SFML::Window SFML::Audio SFML::System)
 

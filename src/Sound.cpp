@@ -1,36 +1,33 @@
 #include "Sound.h"
-#include <SFML/Audio/SoundBuffer.hpp>
 #include <iostream>
 
 Sound::Sound() {
-    if (!bufferMove.loadFromFile("etc/sounds/move.mp3")) {
-        std::cerr << "Error loading move sound file" << std::endl;
-    }
-
-    if (!bufferCapture.loadFromFile("etc/sounds/capture.mp3")) {
-        std::cerr << "Error loading capture sound file" << std::endl;
-    }
-
-    if (!bufferCheck.loadFromFile("etc/sounds/check.mp3")) {
-        std::cerr << "Error loading check sound file" << std::endl;
-    }
+    loadSound("etc/sounds/move.mp3");
+    loadSound("etc/sounds/capture.mp3");
+    loadSound("etc/sounds/check.mp3");
+    loadSound("etc/sounds/illegal.mp3");
+    loadSound("etc/sounds/game-start.mp3");
+    loadSound("etc/sounds/game-end.mp3");
+    loadSound("etc/sounds/promotion.mp3");
+    loadSound("etc/sounds/castle.mp3");
 }
 
-void Sound::playStart() {
-    if (!buffer.loadFromFile("etc/sounds/game-start.mp3")) {
-        std::cerr << "Error loading sound file" << std::endl;
+void Sound::loadSound(const std::string &filename) {
+    auto buffer = std::make_unique<sf::SoundBuffer>();
+    if (!buffer->loadFromFile(filename)) {
+        std::cerr << "Error loading sound file: " << filename << std::endl;
     }
+    buffers.push_back(std::move(buffer));
 
-    sf::Sound sound(buffer);
-    sound.play();
+    auto sound = std::make_unique<sf::Sound>(*buffers.back());
+    sounds.push_back(std::move(sound));
 }
 
-void Sound::playMove() {
-    sf::Sound sound(bufferMove);
-    sound.play();
-}
-
-void Sound::playCapture() {
-    sf::Sound sound(bufferCapture);
-    sound.play();
-}
+void Sound::playStart() { sounds[4]->play(); }
+void Sound::playMove() { sounds[0]->play(); }
+void Sound::playCapture() { sounds[1]->play(); }
+void Sound::playCheck() { sounds[2]->play(); }
+void Sound::playIlegal() { sounds[3]->play(); }
+void Sound::playPromotion() { sounds[6]->play(); }
+void Sound::playEnd() { sounds[5]->play(); }
+void Sound::playCastle() { sounds[7]->play(); }

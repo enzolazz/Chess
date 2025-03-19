@@ -28,7 +28,7 @@ class Board {
     Board(float squareSize, std::string piecesSetup);
 
     Piece *getPiece(int x, int y);
-    void movePiece(Piece *piece, Square square);
+    bool movePiece(Piece *piece, Square square);
     void invertPosition();
     void setColor(sf::Color newColor);
     Piece *createPiece(char piece, Square square);

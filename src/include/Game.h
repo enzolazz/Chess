@@ -2,6 +2,7 @@
 
 #include "Board.h"
 #include "Piece.h"
+#include "Sound.h"
 #include <SFML/Graphics.hpp>
 #include <stack>
 #include <string>
@@ -17,6 +18,7 @@ class Game {
     float squareSize;
     bool whiteTurn = true;
     std::string initialBoard = "rnbqkbnrpppppppp8888PPPPPPPPRNBQKBNR";
+    Sound sounds;
     Board *board;
     Piece *moving = nullptr;
     std::stack<move_tuple> moves;
