@@ -10,6 +10,7 @@ class Sound {
     std::vector<std::unique_ptr<sf::Sound>> sounds;
 
     void loadSound(const std::string &filename);
+    bool isAnySoundPlaying() const;
 
  public:
     Sound();

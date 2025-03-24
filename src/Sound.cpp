@@ -24,19 +24,31 @@ void Sound::loadSound(const std::string &filename) {
     sounds.push_back(std::move(sound));
 }
 
-void Sound::playMove() {
-    if (sounds[7]->getStatus() != sf::SoundSource::Status::Playing) {
-        sounds[0]->play();
+bool Sound::isAnySoundPlaying() const {
+    for (const auto &sound : sounds) {
+        if (sound->getStatus() == sf::SoundSource::Status::Playing) {
+            return true;
+        }
     }
+    return false;
+}
+
+void Sound::playMove() {
+    if (!isAnySoundPlaying())
+        sounds[0]->play();
 }
 
 void Sound::playIlegal() {
-    if (sounds[3]->getStatus() != sf::SoundSource::Status::Playing)
+    if (!isAnySoundPlaying())
         sounds[3]->play();
 }
 
+void Sound::playCapture() {
+    if (!isAnySoundPlaying())
+        sounds[1]->play();
+}
+
 void Sound::playStart() { sounds[4]->play(); }
-void Sound::playCapture() { sounds[1]->play(); }
 void Sound::playCheck() { sounds[2]->play(); }
 void Sound::playPromotion() { sounds[6]->play(); }
 void Sound::playEnd() { sounds[5]->play(); }

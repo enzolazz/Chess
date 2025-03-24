@@ -80,7 +80,7 @@ bool Game::pieceReleased(const sf::Vector2i &position) {
     board->paintMove(pieceSquare, movingSquare);
 
     bool captured = board->movePiece(moving, movingSquare);
-    if (length != moves.size() - 1)
+    if (length != moves.size() - 1 && !captured)
         sounds.playCastle();
     else if (captured)
         sounds.playCapture();
@@ -121,16 +121,28 @@ bool Game::isLegalMove(Piece *piece, Square *square) {
     isValid = piece->isValidMove(*square);
 
     switch (pieceType) {
-    case 'p':
-        isValid = ((Pawn *)piece)->isValidMove(*square, board->getOrientation());
+    case 'p': {
+        Pawn *pawn = (Pawn *)piece;
+        isValid = pawn->isValidMove(*square, board->getOrientation());
 
         if (!isValid)
             return false;
 
-        if (dX != 0 && (abs(dY) != 1 || newSquarePiece == nullptr || newSquarePiece->isWhite() == piece->isWhite()))
-            return false;
+        if (abs(dX) == 1 && abs(dY) == 1 && newSquarePiece == nullptr) {
+            Piece *enPassantPiece = board->getPiece(x, pieceY);
 
-        if (dX == 0) {
+            if (enPassantPiece == nullptr || getPieceType(enPassantPiece) != 'p' ||
+                !((Pawn *)enPassantPiece)->getEnPassant())
+                return false;
+
+            moves.push(
+                move_tuple(enPassantPiece, enPassantPiece->getSquare(), nullptr, *square, board->getOrientation()));
+
+            board->movePiece(enPassantPiece, *square);
+        } else if (dX != 0 &&
+                   (abs(dY) != 1 || newSquarePiece == nullptr || newSquarePiece->isWhite() == piece->isWhite())) {
+            return false;
+        } else if (dX == 0) {
             int orientationDir = board->getOrientation() ? 1 : -1;
 
             int i = pieceY;
@@ -140,7 +152,12 @@ bool Game::isLegalMove(Piece *piece, Square *square) {
                     return false;
             } while (i != y);
         }
+
+        pawn->allowEnPassant(false);
+        if (abs(dY) == 2)
+            pawn->allowEnPassant(true);
         break;
+    }
     case 'k':
         if (dX <= -2) {
             if (piece->isWhite())
@@ -266,17 +283,34 @@ void Game::undo() {
     if (sameOrientation)
         board->invertPosition();
 
-    if (getPieceType(movedPiece) == 'k' && abs(oldSquare.x - newSquare.x) == 2) {
+    char pieceType = getPieceType(movedPiece);
+    if (pieceType == 'k' && abs(oldSquare.x - newSquare.x) == 2) {
         sounds.playCastle();
         undo();
-    } else {
-        toggleTurn();
-        if (takenPiece != nullptr)
-            sounds.playCapture();
-        else
-            sounds.playMove();
-    }
+    } else if (pieceType == 'p' && !moves.empty()) {
+        move_tuple enPassantMove(moves.top());
 
+        Piece *lastPiece = std::get<0>(enPassantMove);
+        Square oldSquare = std::get<1>(enPassantMove);
+        Square newSquare = std::get<3>(enPassantMove);
+
+        short direction = (lastPiece->isWhite() ? -1 : 1);
+        if (getPieceType(lastPiece) == 'p' && (oldSquare.y - newSquare.y == 1 * direction)) {
+            sounds.playCapture();
+            undo();
+        } else {
+            toggleTurn();
+
+            if (abs(oldSquare.y - newSquare.y) == 2)
+                ((Pawn *)movedPiece)->allowEnPassant(false);
+        }
+    } else
+        toggleTurn();
+
+    if (takenPiece != nullptr)
+        sounds.playCapture();
+    else
+        sounds.playMove();
     redoMoves.push(lastMove);
 }
 
@@ -299,23 +333,41 @@ void Game::redo() {
         board->invertPosition();
 
     board->movePiece(movedPiece, newSquare);
-
     movedPiece->moved();
 
     if (sameOrientation)
         board->invertPosition();
 
-    if (getPieceType(movedPiece) == 'k' && abs(oldSquare.x - newSquare.x) == 2) {
+    char pieceType = getPieceType(movedPiece);
+    if (pieceType == 'k' && abs(oldSquare.x - newSquare.x) == 2) {
         sounds.playCastle();
         redo();
-    } else {
-        toggleTurn();
-        if (std::get<2>(undoed) != nullptr)
-            sounds.playCapture();
-        else
-            sounds.playMove();
-    }
+    } else if (pieceType == 'p' && !redoMoves.empty()) {
+        move_tuple enPassantMove(redoMoves.top());
 
+        Piece *lastPiece = std::get<0>(enPassantMove);
+        Square oldSquare = std::get<1>(enPassantMove);
+        Square newSquare = std::get<3>(enPassantMove);
+
+        short direction = (lastPiece->isWhite() ? -1 : 1);
+        if (getPieceType(lastPiece) == 'p' && (oldSquare.y - newSquare.y == 1 * direction)) {
+            sounds.playCapture();
+            redo();
+
+            board->movePiece(movedPiece, newSquare);
+        } else {
+            toggleTurn();
+
+            if (abs(oldSquare.y - newSquare.y) == 2)
+                ((Pawn *)movedPiece)->allowEnPassant(true);
+        }
+    } else
+        toggleTurn();
+
+    if (std::get<2>(undoed) != nullptr)
+        sounds.playCapture();
+    else
+        sounds.playMove();
     moves.push(undoed);
 }
 
