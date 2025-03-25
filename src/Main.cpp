@@ -1,4 +1,4 @@
-#include "Game.h"
+#include "Game.hpp"
 #include <SFML/Audio.hpp>
 #include <SFML/Audio/Sound.hpp>
 #include <SFML/Audio/SoundBuffer.hpp>

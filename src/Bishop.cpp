@@ -1,13 +1,13 @@
-#include "Bishop.h"
+#include "Bishop.hpp"
 #include <vector>
 
 bool Bishop::isValidMove(Square newSquare) {
-  int x = getSquare().x, y = getSquare().y;
+    int x = getSquare().x, y = getSquare().y;
 
-  if (abs(x - newSquare.x) == abs(y - newSquare.y))
-    return true;
+    if (abs(x - newSquare.x) == abs(y - newSquare.y))
+        return true;
 
-  return false;
+    return false;
 }
 
 square_list Bishop::getMoves() { return std::vector<Square>(); }

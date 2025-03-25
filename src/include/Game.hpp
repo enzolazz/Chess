@@ -1,15 +1,15 @@
 #pragma once
 
-#include "Board.h"
-#include "Piece.h"
-#include "Sound.h"
+#include "Board.hpp"
+#include "Piece.hpp"
+#include "Sound.hpp"
 #include <SFML/Graphics.hpp>
 #include <stack>
 #include <string>
 #include <tuple>
 #include <vector>
 
-typedef std::tuple<Piece *, Square, Piece *, Square, bool> move_tuple;
+typedef std::tuple<std::shared_ptr<Piece>, Square, std::shared_ptr<Piece>, Square, bool> move_tuple;
 typedef std::vector<sf::CircleShape> circle_move;
 
 class Game {
@@ -20,15 +20,16 @@ class Game {
     std::string initialBoard = "rnbqkbnrpppppppp8888PPPPPPPPRNBQKBNR";
     Sound sounds;
     Board *board;
-    Piece *moving = nullptr;
+    std::shared_ptr<Piece> moving;
+    std::shared_ptr<Piece> lastMovedPawn;
     std::stack<move_tuple> moves;
     std::stack<move_tuple> redoMoves;
 
-    bool isLegalMove(Piece *piece, Square *newSquare);
+    bool isLegalMove(std::shared_ptr<Piece> piece, Square *newSquare);
     bool turnCheck(char pieceType);
     void toggleTurn();
-    char getPieceType(Piece *piece);
-    bool sameColorCapture(Piece *moved, Piece *taken);
+    char getPieceType(std::shared_ptr<Piece> piece);
+    bool sameColorCapture(std::shared_ptr<Piece> moved, std::shared_ptr<Piece> taken);
 
  public:
     Game(sf::RenderWindow &window, float squareSize);

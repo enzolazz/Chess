@@ -1,9 +1,13 @@
-#include "Board.h"
-#include "Pieces.h"
-#include <iostream>
+#include "Board.hpp"
+#include "Bishop.hpp"
+#include "King.hpp"
+#include "Knight.hpp"
+#include "Pawn.hpp"
+#include "Queen.hpp"
+#include "Rook.hpp"
 
-Board::Board(float squareSize, std::string piecesSetup) : squareSize(squareSize) {
-    orientation = true;
+Board::Board(float squareSize, std::string piecesSetup)
+    : squareSize(squareSize), orientation(true), pieces(8, std::vector<std::shared_ptr<Piece>>(8)) {
     for (int j = 0; j < 8; j++) {
         for (int i = 0; i < 8; i++) {
             board[i][j].setSize({squareSize, squareSize});
@@ -36,37 +40,36 @@ void Board::initialBoard(std::string piecesSetup) {
     }
 }
 
-Piece *Board::getPiece(int x, int y) { return pieces[x][y]; }
+std::shared_ptr<Piece> &Board::getPiece(int x, int y) { return pieces[x][y]; }
 
-Piece *Board::createPiece(char piece, Square square) {
+std::shared_ptr<Piece> Board::createPiece(char piece, Square square) {
     switch (std::tolower(piece)) {
     case 'p':
-        return new Pawn(piece, square);
+        return std::make_unique<Pawn>(piece, square);
     case 'r':
-        return new Rook(piece, square);
+        return std::make_unique<Rook>(piece, square);
     case 'n':
-        return new Knight(piece, square);
+        return std::make_unique<Knight>(piece, square);
     case 'b':
-        return new Bishop(piece, square);
+        return std::make_unique<Bishop>(piece, square);
     case 'k':
-        return new King(piece, square);
+        return std::make_unique<King>(piece, square);
     case 'q':
-        return new Queen(piece, square);
+        return std::make_unique<Queen>(piece, square);
     default:
-        std::cout << "Error!\n";
         return nullptr;
     }
 }
 void Board::setPiece(char pieceType, Square square) { pieces[square.x][square.y] = createPiece(pieceType, square); }
 
-void Board::setPiece(Piece *piece, Square square) {
+void Board::setPiece(std::shared_ptr<Piece> piece, Square square) {
     piece->setSquare(square);
-    pieces[square.x][square.y] = piece;
+    pieces[square.x][square.y] = std::move(piece);
 }
 
 void Board::deletePiece(int x, int y) { pieces[x][y] = nullptr; }
 
-bool Board::movePiece(Piece *piece, Square square) {
+bool Board::movePiece(std::shared_ptr<Piece> piece, Square square) {
     int oldX = piece->getSquare().x;
     int oldY = piece->getSquare().y;
 
@@ -78,7 +81,7 @@ bool Board::movePiece(Piece *piece, Square square) {
         deletePiece(square.x, square.y);
     }
 
-    setPiece(piece, square);
+    setPiece(std::move(piece), square);
 
     return capture;
 }
@@ -89,7 +92,7 @@ void Board::invertPosition() {
             if (pieces[i][j] == nullptr && pieces[x][y] == nullptr)
                 continue;
 
-            swap(pieces[i][j], pieces[x][y]);
+            std::swap(pieces[i][j], pieces[x][y]);
 
             if (pieces[i][j] != nullptr)
                 pieces[i][j]->setSquare(Square{i, j, squareSize});
@@ -99,17 +102,6 @@ void Board::invertPosition() {
     }
 
     orientation = !orientation;
-}
-
-template <typename T> void Board::swap(T *&a, T *&b) {
-    if (a == nullptr) {
-        a = b;
-        b = nullptr;
-    } else if (b == nullptr) {
-        b = a;
-        a = nullptr;
-    } else
-        std::swap(a, b);
 }
 
 bool Board::getOrientation() { return orientation; }

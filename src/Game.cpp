@@ -1,7 +1,9 @@
-#include "Game.h"
-#include "Pieces.h"
+#include "Game.hpp"
+#include "Pawn.hpp"
+#include "Rook.hpp"
 #include <SFML/System/Vector2.hpp>
 #include <iostream>
+#include <memory>
 
 static Square getSquare(const sf::Vector2i &position, float squareSize) {
     return {(int)(position.x / squareSize), (int)(position.y / squareSize), squareSize};
@@ -21,7 +23,7 @@ void Game::draw() {
 
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
-            Piece *piece = board->getPiece(i, j);
+            std::shared_ptr<Piece> piece = board->getPiece(i, j);
             if (piece != nullptr && piece != moving)
                 _window.draw(piece->getSprite());
         }
@@ -37,15 +39,13 @@ bool Game::piecePressed(const sf::Vector2i &position) {
     int x = position.x / squareSize;
     int y = position.y / squareSize;
 
-    Piece *piece = board->getPiece(x, y);
+    std::shared_ptr<Piece> piece = board->getPiece(x, y);
     if (piece == nullptr || !turnCheck(piece->getType()))
         return false;
 
     board->resetColors();
     moving = piece;
 
-    piece = nullptr;
-    delete piece;
     return true;
 }
 
@@ -100,7 +100,7 @@ void Game::resetMoving() {
     board->movePiece(moving, moving->getSquare());
 }
 
-bool Game::isLegalMove(Piece *piece, Square *square) {
+bool Game::isLegalMove(std::shared_ptr<Piece> piece, Square *square) {
     int x = square->x;
     int y = square->y;
 
@@ -115,24 +115,23 @@ bool Game::isLegalMove(Piece *piece, Square *square) {
     int dX = pieceX - x;
     int dY = pieceY - y;
 
-    Rook *rook = nullptr;
-    Piece *newSquarePiece = board->getPiece(x, y);
+    std::shared_ptr<Rook> rook;
+    std::shared_ptr<Piece> newSquarePiece = board->getPiece(x, y);
 
     isValid = piece->isValidMove(*square);
 
     switch (pieceType) {
     case 'p': {
-        Pawn *pawn = (Pawn *)piece;
+        std::shared_ptr<Pawn> pawn = std::static_pointer_cast<Pawn>(piece);
         isValid = pawn->isValidMove(*square, board->getOrientation());
 
         if (!isValid)
             return false;
 
         if (abs(dX) == 1 && abs(dY) == 1 && newSquarePiece == nullptr) {
-            Piece *enPassantPiece = board->getPiece(x, pieceY);
+            std::shared_ptr<Piece> enPassantPiece = board->getPiece(x, pieceY);
 
-            if (enPassantPiece == nullptr || getPieceType(enPassantPiece) != 'p' ||
-                !((Pawn *)enPassantPiece)->getEnPassant())
+            if (enPassantPiece == nullptr || enPassantPiece != lastMovedPawn)
                 return false;
 
             moves.push(
@@ -153,22 +152,23 @@ bool Game::isLegalMove(Piece *piece, Square *square) {
             } while (i != y);
         }
 
-        pawn->allowEnPassant(false);
         if (abs(dY) == 2)
-            pawn->allowEnPassant(true);
+            lastMovedPawn = piece;
+        else
+            lastMovedPawn.reset();
         break;
     }
     case 'k':
         if (dX <= -2) {
             if (piece->isWhite())
-                rook = (Rook *)board->getPiece(7, 7);
+                rook = std::static_pointer_cast<Rook>(board->getPiece(7, 7));
             else
-                rook = (Rook *)board->getPiece(7, 0);
+                rook = std::static_pointer_cast<Rook>(board->getPiece(7, 0));
         } else if (dX >= 2) {
             if (piece->isWhite())
-                rook = (Rook *)board->getPiece(0, 7);
+                rook = std::static_pointer_cast<Rook>(board->getPiece(0, 7));
             else
-                rook = (Rook *)board->getPiece(0, 0);
+                rook = std::static_pointer_cast<Rook>(board->getPiece(0, 0));
         }
 
         if (!isValid)
@@ -262,8 +262,8 @@ void Game::undo() {
     move_tuple lastMove(moves.top());
     moves.pop();
 
-    Piece *movedPiece = std::get<0>(lastMove);
-    Piece *takenPiece = std::get<2>(lastMove);
+    std::shared_ptr<Piece> movedPiece = std::get<0>(lastMove);
+    std::shared_ptr<Piece> takenPiece = std::get<2>(lastMove);
 
     Square oldSquare = std::get<1>(lastMove);
     Square newSquare = std::get<3>(lastMove);
@@ -290,7 +290,7 @@ void Game::undo() {
     } else if (pieceType == 'p' && !moves.empty()) {
         move_tuple enPassantMove(moves.top());
 
-        Piece *lastPiece = std::get<0>(enPassantMove);
+        std::shared_ptr<Piece> lastPiece = std::get<0>(enPassantMove);
         Square oldSquare = std::get<1>(enPassantMove);
         Square newSquare = std::get<3>(enPassantMove);
 
@@ -302,7 +302,7 @@ void Game::undo() {
             toggleTurn();
 
             if (abs(oldSquare.y - newSquare.y) == 2)
-                ((Pawn *)movedPiece)->allowEnPassant(false);
+                lastMovedPawn = lastPiece;
         }
     } else
         toggleTurn();
@@ -321,7 +321,7 @@ void Game::redo() {
     move_tuple undoed(redoMoves.top());
     redoMoves.pop();
 
-    Piece *movedPiece = std::get<0>(undoed);
+    std::shared_ptr<Piece> movedPiece = std::get<0>(undoed);
     Square oldSquare = std::get<1>(undoed);
     Square newSquare = std::get<3>(undoed);
 
@@ -345,7 +345,7 @@ void Game::redo() {
     } else if (pieceType == 'p' && !redoMoves.empty()) {
         move_tuple enPassantMove(redoMoves.top());
 
-        Piece *lastPiece = std::get<0>(enPassantMove);
+        std::shared_ptr<Piece> lastPiece = std::get<0>(enPassantMove);
         Square oldSquare = std::get<1>(enPassantMove);
         Square newSquare = std::get<3>(enPassantMove);
 
@@ -359,7 +359,7 @@ void Game::redo() {
             toggleTurn();
 
             if (abs(oldSquare.y - newSquare.y) == 2)
-                ((Pawn *)movedPiece)->allowEnPassant(true);
+                lastMovedPawn.reset();
         }
     } else
         toggleTurn();
@@ -402,9 +402,9 @@ void Game::showAvailableSquares() {
 
 bool Game::pieceSelected() { return moving != nullptr; }
 
-char Game::getPieceType(Piece *piece) { return std::tolower(piece->getType()); }
+char Game::getPieceType(std::shared_ptr<Piece> piece) { return std::tolower(piece->getType()); }
 
-bool Game::sameColorCapture(Piece *moved, Piece *taken) {
+bool Game::sameColorCapture(std::shared_ptr<Piece> moved, std::shared_ptr<Piece> taken) {
     if (taken == nullptr)
         return false;
 

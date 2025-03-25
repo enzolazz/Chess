@@ -1,4 +1,4 @@
-#include "Piece.h"
+#include "Piece.hpp"
 #include <iostream>
 
 Piece::Piece(char piece, Square square) : piece(piece), square(square) {

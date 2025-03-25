@@ -1,4 +1,4 @@
-#include "Pawn.h"
+#include "Pawn.hpp"
 
 bool Pawn::isInInitialRow(bool boardOrientation) {
     int row = getSquare().y + 1;
@@ -37,10 +37,6 @@ bool Pawn::isValidMove(Square newSquare, bool boardOrientation) {
 
     return false;
 }
-
-void Pawn::allowEnPassant(bool value) { this->enPassant = value; }
-
-bool Pawn::getEnPassant() { return enPassant; }
 
 square_list Pawn::getMoves() {
     square_list s;
