@@ -15,11 +15,15 @@ typedef std::vector<sf::CircleShape> circle_move;
 class Game {
  private:
     sf::RenderWindow &_window;
+
     float squareSize;
-    bool whiteTurn = true;
-    std::string initialBoard = "rnbqkbnrpppppppp8888PPPPPPPPRNBQKBNR";
+    bool whiteTurn;
+    int allowedToEnPassant;
+    std::string initialBoard;
+
     Sound sounds;
     Board *board;
+
     std::shared_ptr<Piece> moving;
     std::shared_ptr<Piece> lastMovedPawn;
     std::stack<move_tuple> moves;

@@ -21,7 +21,7 @@ Board::Board(float squareSize, std::string piecesSetup)
     initialBoard(piecesSetup);
 }
 
-sf::Color Board::findColor(int i, int j) { return (i + j) % 2 == 0 ? whiteColor : blackColor; }
+sf::Color Board::findColor(int i, int j) { return (i + j) % 2 == 0 ? WHITECOLOR : BLACKCOLOR; }
 
 void Board::initialBoard(std::string piecesSetup) {
     int pieceIndex = 0;
@@ -107,15 +107,13 @@ void Board::invertPosition() {
 bool Board::getOrientation() { return orientation; }
 
 void Board::paintMove(Square old, Square moved) {
-    board[old.x][old.y].setFillColor(moveColor);
-    board[moved.x][moved.y].setFillColor(moveColor);
+    moveSquare[0] = std::make_unique<sf::RectangleShape>(board[old.x][old.y]);
+    moveSquare[1] = std::make_unique<sf::RectangleShape>(board[moved.x][moved.y]);
+
+    moveSquare[0]->setFillColor(MOVECOLOR);
+    moveSquare[1]->setFillColor(MOVECOLOR);
 }
 
-void Board::resetColors() {
-    for (int j = 0; j < 8; j++) {
-        for (int i = 0; i < 8; i++) {
-            sf::Color color = findColor(i, j);
-            board[i][j].setFillColor(color);
-        }
-    }
-}
+void Board::resetColors() { moveSquare[0].reset(), moveSquare[1].reset(); }
+
+bool Board::isPainted() { return moveSquare[0] != nullptr; }

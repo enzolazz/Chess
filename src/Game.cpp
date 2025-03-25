@@ -2,7 +2,6 @@
 #include "Pawn.hpp"
 #include "Rook.hpp"
 #include <SFML/System/Vector2.hpp>
-#include <iostream>
 #include <memory>
 
 static Square getSquare(const sf::Vector2i &position, float squareSize) {
@@ -11,7 +10,9 @@ static Square getSquare(const sf::Vector2i &position, float squareSize) {
 
 static bool sameSquare(Square &a, Square &b) { return a.x == b.x && a.y == b.y; }
 
-Game::Game(sf::RenderWindow &window, float squareSize) : _window(window), squareSize(squareSize) {
+Game::Game(sf::RenderWindow &window, float squareSize)
+    : _window(window), squareSize(squareSize), whiteTurn(true), allowedToEnPassant(0),
+      initialBoard("rnbqkbnrpppppppp8888PPPPPPPPRNBQKBNR") {
     board = new Board(squareSize, initialBoard);
     sounds.playStart();
 }
@@ -20,6 +21,11 @@ void Game::draw() {
     for (int i = 0; i < 8; i++)
         for (int j = 0; j < 8; j++)
             _window.draw(board->board[i][j]);
+
+    if (board->isPainted()) {
+        _window.draw(*board->moveSquare[0]);
+        _window.draw(*board->moveSquare[1]);
+    }
 
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
@@ -131,7 +137,7 @@ bool Game::isLegalMove(std::shared_ptr<Piece> piece, Square *square) {
         if (abs(dX) == 1 && abs(dY) == 1 && newSquarePiece == nullptr) {
             std::shared_ptr<Piece> enPassantPiece = board->getPiece(x, pieceY);
 
-            if (enPassantPiece == nullptr || enPassantPiece != lastMovedPawn)
+            if (allowedToEnPassant != 0 || enPassantPiece == nullptr)
                 return false;
 
             moves.push(
@@ -152,23 +158,18 @@ bool Game::isLegalMove(std::shared_ptr<Piece> piece, Square *square) {
             } while (i != y);
         }
 
-        if (abs(dY) == 2)
+        if (abs(dY) == 2) {
             lastMovedPawn = piece;
-        else
-            lastMovedPawn.reset();
+            allowedToEnPassant = -1;
+        }
         break;
     }
     case 'k':
-        if (dX <= -2) {
-            if (piece->isWhite())
-                rook = std::static_pointer_cast<Rook>(board->getPiece(7, 7));
-            else
-                rook = std::static_pointer_cast<Rook>(board->getPiece(7, 0));
-        } else if (dX >= 2) {
-            if (piece->isWhite())
-                rook = std::static_pointer_cast<Rook>(board->getPiece(0, 7));
-            else
-                rook = std::static_pointer_cast<Rook>(board->getPiece(0, 0));
+        if (abs(dX) >= 2) {
+            int x = (dX > 0) ? 0 : 7;
+            int y = piece->isWhite() ? 7 : 0;
+
+            rook = std::static_pointer_cast<Rook>(board->getPiece(x, y));
         }
 
         if (!isValid)
@@ -246,6 +247,7 @@ bool Game::isLegalMove(std::shared_ptr<Piece> piece, Square *square) {
         break;
     }
 
+    allowedToEnPassant++;
     piece->moved();
 
     return true;
@@ -259,6 +261,7 @@ void Game::undo() {
     if (moves.empty())
         return;
 
+    allowedToEnPassant--;
     move_tuple lastMove(moves.top());
     moves.pop();
 
@@ -288,6 +291,11 @@ void Game::undo() {
         sounds.playCastle();
         undo();
     } else if (pieceType == 'p' && !moves.empty()) {
+        if (abs(oldSquare.y - newSquare.y) == 2) {
+            lastMovedPawn = movedPiece;
+            allowedToEnPassant = 0;
+        }
+
         move_tuple enPassantMove(moves.top());
 
         std::shared_ptr<Piece> lastPiece = std::get<0>(enPassantMove);
@@ -298,11 +306,9 @@ void Game::undo() {
         if (getPieceType(lastPiece) == 'p' && (oldSquare.y - newSquare.y == 1 * direction)) {
             sounds.playCapture();
             undo();
+            allowedToEnPassant = 0;
         } else {
             toggleTurn();
-
-            if (abs(oldSquare.y - newSquare.y) == 2)
-                lastMovedPawn = lastPiece;
         }
     } else
         toggleTurn();
@@ -318,6 +324,7 @@ void Game::redo() {
     if (redoMoves.empty())
         return;
 
+    allowedToEnPassant++;
     move_tuple undoed(redoMoves.top());
     redoMoves.pop();
 
@@ -343,6 +350,11 @@ void Game::redo() {
         sounds.playCastle();
         redo();
     } else if (pieceType == 'p' && !redoMoves.empty()) {
+        if (abs(oldSquare.y - newSquare.y) == 2) {
+            lastMovedPawn = movedPiece;
+            allowedToEnPassant = 0;
+        }
+
         move_tuple enPassantMove(redoMoves.top());
 
         std::shared_ptr<Piece> lastPiece = std::get<0>(enPassantMove);
@@ -357,9 +369,6 @@ void Game::redo() {
             board->movePiece(movedPiece, newSquare);
         } else {
             toggleTurn();
-
-            if (abs(oldSquare.y - newSquare.y) == 2)
-                lastMovedPawn.reset();
         }
     } else
         toggleTurn();
