@@ -703,12 +703,11 @@ GameState Game::checkGameState() {
 }
 
 void Game::drawEndGame() {
-    if (gameState == GameState::PLAYING)
+    if (gameState != GameState::CHECKMATE && gameState != GameState::STALEMATE)
         return;
 
     // Draw semi-transparent overlay
     sf::RectangleShape overlay({squareSize * 8, squareSize * 8});
-    overlay.setPosition({BOARD_MARGIN, BOARD_MARGIN});
     overlay.setFillColor(sf::Color(0, 0, 0, 150));
     _window.draw(overlay);
 
@@ -727,7 +726,7 @@ void Game::drawEndGame() {
     sf::FloatRect textBounds = endGameText->getLocalBounds();
     endGameText->setOrigin({textBounds.position.x + textBounds.size.x / 2.f,
                             textBounds.position.y + textBounds.size.y / 2.f});
-    endGameText->setPosition({BOARD_MARGIN + squareSize * 4, BOARD_MARGIN + squareSize * 3.5f});
+    endGameText->setPosition({squareSize * 4, squareSize * 3.5f});
     _window.draw(*endGameText);
 
     // Draw restart instruction
@@ -738,7 +737,7 @@ void Game::drawEndGame() {
     sf::FloatRect restartBounds = restartText.getLocalBounds();
     restartText.setOrigin({restartBounds.position.x + restartBounds.size.x / 2.f,
                            restartBounds.position.y + restartBounds.size.y / 2.f});
-    restartText.setPosition({BOARD_MARGIN + squareSize * 4, BOARD_MARGIN + squareSize * 4.5f});
+    restartText.setPosition({squareSize * 4, squareSize * 4.5f});
     _window.draw(restartText);
 }
 
@@ -779,13 +778,12 @@ void Game::drawPromotionUI() {
 
     // Draw background overlay
     sf::RectangleShape overlay({squareSize * 8, squareSize * 8});
-    overlay.setPosition({BOARD_MARGIN, BOARD_MARGIN});
     overlay.setFillColor(sf::Color(0, 0, 0, 100));
     _window.draw(overlay);
 
     // Draw promotion panel
     sf::RectangleShape panel({squareSize, squareSize * 4});
-    panel.setPosition({BOARD_MARGIN + uiX * squareSize, BOARD_MARGIN + uiStartY * squareSize});
+    panel.setPosition({uiX * squareSize, uiStartY * squareSize});
     panel.setFillColor(sf::Color(240, 240, 240));
     panel.setOutlineColor(sf::Color::Black);
     panel.setOutlineThickness(2.f);
