@@ -11,7 +11,10 @@
 const int squareSize = 110;
 
 int main() {
-    sf::RenderWindow window(sf::VideoMode({squareSize * 8, squareSize * 8}), "Chess-app", sf::Style::Titlebar | sf::Style::Close);
+    // Window size: board + panel width
+    unsigned int windowWidth = static_cast<unsigned int>(squareSize * 8 + PANEL_WIDTH);
+    unsigned int windowHeight = static_cast<unsigned int>(squareSize * 8);
+    sf::RenderWindow window(sf::VideoMode({windowWidth, windowHeight}), "Chess-app", sf::Style::Titlebar | sf::Style::Close);
 
     Game game(window, squareSize);
 

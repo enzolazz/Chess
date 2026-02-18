@@ -5,7 +5,7 @@
 #include <memory>
 
 static Square getSquare(const sf::Vector2i &position, float squareSize) {
-    return {(int)(position.x / squareSize), (int)(position.y / squareSize), squareSize};
+    return {(int)((position.x - BOARD_MARGIN) / squareSize), (int)((position.y - BOARD_MARGIN) / squareSize), squareSize};
 }
 
 static bool sameSquare(Square &a, Square &b) { return a.x == b.x && a.y == b.y; }
@@ -16,12 +16,15 @@ Game::Game(sf::RenderWindow &window, float squareSize)
     board = std::make_unique<Board>(squareSize, initialBoard);
 
     font = std::make_unique<sf::Font>();
-    fontLoaded = font->openFromFile("etc/fonts/Roboto-Bold.ttf");
+    fontLoaded = font->openFromFile("etc/fonts/NotoSans-Bold.ttf");
     if (!fontLoaded) {
-        fontLoaded = font->openFromFile("/usr/share/fonts/TTF/DejaVuSans-Bold.ttf");
+        fontLoaded = font->openFromFile("etc/fonts/Roboto-Bold.ttf");
     }
     if (!fontLoaded) {
-        fontLoaded = font->openFromFile("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf");
+        fontLoaded = font->openFromFile("/usr/share/fonts/noto/NotoSans-Bold.ttf");
+    }
+    if (!fontLoaded) {
+        fontLoaded = font->openFromFile("/usr/share/fonts/TTF/DejaVuSans-Bold.ttf");
     }
 
     if (fontLoaded) {
@@ -61,6 +64,8 @@ void Game::draw() {
         _window.draw(moving->getSprite());
     }
 
+    drawCoordinates();
+    drawTurnIndicator();
     drawPromotionUI();
     drawEndGame();
 }
@@ -74,8 +79,8 @@ bool Game::piecePressed(const sf::Vector2i &position) {
     if (gameState != GameState::PLAYING)
         return false;
 
-    int x = position.x / squareSize;
-    int y = position.y / squareSize;
+    int x = (position.x - BOARD_MARGIN) / squareSize;
+    int y = (position.y - BOARD_MARGIN) / squareSize;
 
     if (x < 0 || x >= 8 || y < 0 || y >= 8)
         return false;
@@ -101,8 +106,8 @@ bool Game::pieceReleased(const sf::Vector2i &position) {
     if (moving == nullptr)
         return false;
 
-    int x = position.x / squareSize;
-    int y = position.y / squareSize;
+    int x = (position.x - BOARD_MARGIN) / squareSize;
+    int y = (position.y - BOARD_MARGIN) / squareSize;
 
     if (x < 0 || x >= 8 || y < 0 || y >= 8) {
         resetMoving();
@@ -120,10 +125,10 @@ bool Game::pieceReleased(const sf::Vector2i &position) {
             sounds.playIlegal();
         return false;
     }
-    move_tuple move(moving, pieceSquare, board->getPiece(movingSquare.x, movingSquare.y), movingSquare,
-                    board->getOrientation());
+    Move move(moving, pieceSquare, board->getPiece(movingSquare.x, movingSquare.y), movingSquare,
+              board->getOrientation());
     moves.push(move);
-    redoMoves = std::stack<move_tuple>();
+    redoMoves = std::stack<Move>();
 
     board->resetColors();
     board->paintMove(pieceSquare, movingSquare);
@@ -214,7 +219,7 @@ bool Game::isLegalMove(std::shared_ptr<Piece> piece, Square *square) {
                 return false;
 
             moves.push(
-                move_tuple(enPassantPiece, enPassantPiece->getSquare(), nullptr, *square, board->getOrientation()));
+                Move(enPassantPiece, enPassantPiece->getSquare(), nullptr, *square, board->getOrientation()));
 
             board->movePiece(enPassantPiece, *square);
         } else if (dX != 0 &&
@@ -293,7 +298,7 @@ bool Game::isLegalMove(std::shared_ptr<Piece> piece, Square *square) {
             if (board->isSquareAttacked(finalSquare, !piece->isWhite()))
                 return false;
 
-            move_tuple rookCastled(rook, rook->getSquare(), nullptr, castledSquare, board->getOrientation());
+            Move rookCastled(rook, rook->getSquare(), nullptr, castledSquare, board->getOrientation());
             moves.push(rookCastled);
 
             board->movePiece(rook, castledSquare);
@@ -356,18 +361,18 @@ void Game::undo() {
         return;
 
     allowedToEnPassant--;
-    move_tuple lastMove(moves.top());
+    Move lastMove = moves.top();
     moves.pop();
 
-    std::shared_ptr<Piece> movedPiece = std::get<0>(lastMove);
-    std::shared_ptr<Piece> takenPiece = std::get<2>(lastMove);
+    std::shared_ptr<Piece> movedPiece = lastMove.piece;
+    std::shared_ptr<Piece> takenPiece = lastMove.captured;
 
-    Square oldSquare = std::get<1>(lastMove);
-    Square newSquare = std::get<3>(lastMove);
+    Square oldSquare = lastMove.from;
+    Square newSquare = lastMove.to;
 
     board->resetColors();
 
-    bool sameOrientation = std::get<4>(lastMove) != board->getOrientation();
+    bool sameOrientation = lastMove.orientation != board->getOrientation();
     if (sameOrientation)
         board->invertPosition();
 
@@ -390,14 +395,14 @@ void Game::undo() {
             allowedToEnPassant = 0;
         }
 
-        move_tuple enPassantMove(moves.top());
+        Move enPassantMove = moves.top();
 
-        std::shared_ptr<Piece> lastPiece = std::get<0>(enPassantMove);
-        Square oldSquare = std::get<1>(enPassantMove);
-        Square newSquare = std::get<3>(enPassantMove);
+        std::shared_ptr<Piece> lastPiece = enPassantMove.piece;
+        Square enPassantOld = enPassantMove.from;
+        Square enPassantNew = enPassantMove.to;
 
         short direction = (lastPiece->isWhite() ? -1 : 1);
-        if (getPieceType(lastPiece) == 'p' && (oldSquare.y - newSquare.y == 1 * direction)) {
+        if (getPieceType(lastPiece) == 'p' && (enPassantOld.y - enPassantNew.y == 1 * direction)) {
             sounds.playCapture();
             undo();
             allowedToEnPassant = 0;
@@ -426,17 +431,17 @@ void Game::redo() {
         return;
 
     allowedToEnPassant++;
-    move_tuple undoed(redoMoves.top());
+    Move undoed = redoMoves.top();
     redoMoves.pop();
 
-    std::shared_ptr<Piece> movedPiece = std::get<0>(undoed);
-    Square oldSquare = std::get<1>(undoed);
-    Square newSquare = std::get<3>(undoed);
+    std::shared_ptr<Piece> movedPiece = undoed.piece;
+    Square oldSquare = undoed.from;
+    Square newSquare = undoed.to;
 
     board->resetColors();
     board->paintMove(oldSquare, newSquare);
 
-    bool sameOrientation = std::get<4>(undoed) != board->getOrientation();
+    bool sameOrientation = undoed.orientation != board->getOrientation();
     if (sameOrientation)
         board->invertPosition();
 
@@ -456,14 +461,14 @@ void Game::redo() {
             allowedToEnPassant = 0;
         }
 
-        move_tuple enPassantMove(redoMoves.top());
+        Move enPassantMove = redoMoves.top();
 
-        std::shared_ptr<Piece> lastPiece = std::get<0>(enPassantMove);
-        Square oldSquare = std::get<1>(enPassantMove);
-        Square newSquare = std::get<3>(enPassantMove);
+        std::shared_ptr<Piece> lastPiece = enPassantMove.piece;
+        Square enPassantOld = enPassantMove.from;
+        Square enPassantNew = enPassantMove.to;
 
         short direction = (lastPiece->isWhite() ? -1 : 1);
-        if (getPieceType(lastPiece) == 'p' && (oldSquare.y - newSquare.y == 1 * direction)) {
+        if (getPieceType(lastPiece) == 'p' && (enPassantOld.y - enPassantNew.y == 1 * direction)) {
             sounds.playCapture();
             redo();
 
@@ -474,7 +479,7 @@ void Game::redo() {
     } else
         toggleTurn();
 
-    if (std::get<2>(undoed) != nullptr)
+    if (undoed.captured != nullptr)
         sounds.playCapture();
     else
         sounds.playMove();
@@ -594,7 +599,8 @@ void Game::showAvailableSquares() {
         }
 
         circle.setOrigin({circle.getRadius(), circle.getRadius()});
-        sf::Vector2f pos(square.x * squareSize + squareSize / 2, square.y * squareSize + squareSize / 2);
+        sf::Vector2f pos(BOARD_MARGIN + square.x * squareSize + squareSize / 2,
+                         BOARD_MARGIN + square.y * squareSize + squareSize / 2);
         circle.setPosition({pos.x, pos.y});
 
         circles.push_back(circle);
@@ -702,6 +708,7 @@ void Game::drawEndGame() {
 
     // Draw semi-transparent overlay
     sf::RectangleShape overlay({squareSize * 8, squareSize * 8});
+    overlay.setPosition({BOARD_MARGIN, BOARD_MARGIN});
     overlay.setFillColor(sf::Color(0, 0, 0, 150));
     _window.draw(overlay);
 
@@ -720,7 +727,7 @@ void Game::drawEndGame() {
     sf::FloatRect textBounds = endGameText->getLocalBounds();
     endGameText->setOrigin({textBounds.position.x + textBounds.size.x / 2.f,
                             textBounds.position.y + textBounds.size.y / 2.f});
-    endGameText->setPosition({squareSize * 4, squareSize * 3.5f});
+    endGameText->setPosition({BOARD_MARGIN + squareSize * 4, BOARD_MARGIN + squareSize * 3.5f});
     _window.draw(*endGameText);
 
     // Draw restart instruction
@@ -731,7 +738,7 @@ void Game::drawEndGame() {
     sf::FloatRect restartBounds = restartText.getLocalBounds();
     restartText.setOrigin({restartBounds.position.x + restartBounds.size.x / 2.f,
                            restartBounds.position.y + restartBounds.size.y / 2.f});
-    restartText.setPosition({squareSize * 4, squareSize * 4.5f});
+    restartText.setPosition({BOARD_MARGIN + squareSize * 4, BOARD_MARGIN + squareSize * 4.5f});
     _window.draw(restartText);
 }
 
@@ -742,8 +749,8 @@ void Game::restart() {
     gameState = GameState::PLAYING;
     moving = nullptr;
     lastMovedPawn = nullptr;
-    moves = std::stack<move_tuple>();
-    redoMoves = std::stack<move_tuple>();
+    moves = std::stack<Move>();
+    redoMoves = std::stack<Move>();
     sounds.playStart();
 }
 
@@ -772,12 +779,13 @@ void Game::drawPromotionUI() {
 
     // Draw background overlay
     sf::RectangleShape overlay({squareSize * 8, squareSize * 8});
+    overlay.setPosition({BOARD_MARGIN, BOARD_MARGIN});
     overlay.setFillColor(sf::Color(0, 0, 0, 100));
     _window.draw(overlay);
 
     // Draw promotion panel
     sf::RectangleShape panel({squareSize, squareSize * 4});
-    panel.setPosition({uiX * squareSize, uiStartY * squareSize});
+    panel.setPosition({BOARD_MARGIN + uiX * squareSize, BOARD_MARGIN + uiStartY * squareSize});
     panel.setFillColor(sf::Color(240, 240, 240));
     panel.setOutlineColor(sf::Color::Black);
     panel.setOutlineThickness(2.f);
@@ -810,8 +818,8 @@ bool Game::handlePromotionClick(const sf::Vector2i &position) {
     if (gameState != GameState::PROMOTING)
         return false;
 
-    int clickX = position.x / squareSize;
-    int clickY = position.y / squareSize;
+    int clickX = (position.x - BOARD_MARGIN) / squareSize;
+    int clickY = (position.y - BOARD_MARGIN) / squareSize;
 
     int uiX = promotionSquare.x;
     int uiStartY = promotingPawn->isWhite() ? 0 : 4;
@@ -872,4 +880,56 @@ void Game::completePromotion(char pieceType) {
 
     promotingPawn = nullptr;
     promotionCaptured = nullptr;
+}
+
+void Game::drawTurnIndicator() {
+    float panelX = BOARD_MARGIN + squareSize * 8 + 10;
+    float panelWidth = PANEL_WIDTH - 20;
+
+    // Background panel
+    sf::RectangleShape panel({panelWidth, 60});
+    panel.setPosition({panelX, BOARD_MARGIN + 10});
+    panel.setFillColor(whiteTurn ? sf::Color::White : sf::Color(50, 50, 50));
+    panel.setOutlineColor(sf::Color(100, 100, 100));
+    panel.setOutlineThickness(2.f);
+    _window.draw(panel);
+
+    // Turn indicator text
+    if (fontLoaded) {
+        sf::Text turnText(*font, whiteTurn ? "White" : "Black", 24);
+        turnText.setFillColor(whiteTurn ? sf::Color::Black : sf::Color::White);
+        sf::FloatRect textBounds = turnText.getLocalBounds();
+        turnText.setPosition({panelX + (panelWidth - textBounds.size.x) / 2, BOARD_MARGIN + 25});
+        _window.draw(turnText);
+    }
+}
+
+void Game::drawCoordinates() {
+    if (!fontLoaded)
+        return;
+
+    const char *files = board->getOrientation() ? "abcdefgh" : "hgfedcba";
+    const char *ranks = board->getOrientation() ? "87654321" : "12345678";
+
+    unsigned int fontSize = static_cast<unsigned int>(squareSize * 0.13f);  // Scale with square size
+
+    for (int i = 0; i < 8; i++) {
+        // Files (a-h) in the bottom-right corner of bottom row squares
+        sf::Text fileText(*font, std::string(1, files[i]), fontSize);
+        // Alternate color based on square color (bottom row: row 7)
+        bool isLightSquare = (i + 7) % 2 == 0;
+        fileText.setFillColor(isLightSquare ? sf::Color(181, 136, 99) : sf::Color(240, 217, 181));
+        sf::FloatRect fileBounds = fileText.getLocalBounds();
+        fileText.setPosition({BOARD_MARGIN + (i + 1) * squareSize - fileBounds.size.x - 3,
+                              BOARD_MARGIN + 8 * squareSize - fileBounds.size.y - 6});
+        _window.draw(fileText);
+
+        // Ranks (1-8) in the top-left corner of left column squares
+        sf::Text rankText(*font, std::string(1, ranks[i]), fontSize);
+        // Alternate color based on square color (left column: column 0)
+        isLightSquare = (0 + i) % 2 == 0;
+        rankText.setFillColor(isLightSquare ? sf::Color(181, 136, 99) : sf::Color(240, 217, 181));
+        rankText.setPosition({BOARD_MARGIN + 3, BOARD_MARGIN + i * squareSize + 1});
+        _window.draw(rankText);
+    }
 }

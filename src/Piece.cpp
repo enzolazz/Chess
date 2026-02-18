@@ -1,4 +1,5 @@
 #include "Piece.hpp"
+#include "Board.hpp"
 #include <iostream>
 
 Piece::Piece(char piece, Square square) : piece(piece), square(square) {
@@ -43,7 +44,8 @@ sf::Sprite &Piece::getSprite() { return *sprite; }
 char Piece::getType() { return piece; }
 
 sf::Vector2f Piece::findSquarePosition(Square square) {
-    sf::Vector2f pos(square.x * square.size + square.size / 2, square.y * square.size + square.size / 2);
+    sf::Vector2f pos(BOARD_MARGIN + square.x * square.size + square.size / 2,
+                     BOARD_MARGIN + square.y * square.size + square.size / 2);
     return pos;
 }
 

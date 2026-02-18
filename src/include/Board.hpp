@@ -10,6 +10,8 @@
 #define BLACKCOLOR sf::Color(181, 136, 99)
 #define MOVECOLOR sf::Color(237, 234, 83, 200)
 
+constexpr float BOARD_MARGIN = 0.f;
+
 class Board {
  private:
     float squareSize;
@@ -28,6 +30,10 @@ class Board {
     sf::RectangleShape board[8][8];
     std::array<std::unique_ptr<sf::RectangleShape>, 2> moveSquare;
     std::unique_ptr<sf::RectangleShape> checkSquare;
+
+    // Store logical positions for move highlight (to repaint after flip)
+    Square lastMoveFrom{-1, -1, 0};
+    Square lastMoveTo{-1, -1, 0};
 
     Board(float squareSize, std::string piecesSetup);
 

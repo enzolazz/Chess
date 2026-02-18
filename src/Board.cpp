@@ -11,7 +11,7 @@ Board::Board(float squareSize, std::string piecesSetup)
     for (int j = 0; j < 8; j++) {
         for (int i = 0; i < 8; i++) {
             board[i][j].setSize({squareSize, squareSize});
-            board[i][j].setPosition({i * squareSize, j * squareSize});
+            board[i][j].setPosition({BOARD_MARGIN + i * squareSize, BOARD_MARGIN + j * squareSize});
 
             sf::Color color = findColor(i, j);
             board[i][j].setFillColor(color);
@@ -102,11 +102,43 @@ void Board::invertPosition() {
     }
 
     orientation = !orientation;
+
+    // Repaint move squares at their new flipped positions
+    if (lastMoveFrom.x >= 0) {
+        lastMoveFrom = {7 - lastMoveFrom.x, 7 - lastMoveFrom.y, squareSize};
+        lastMoveTo = {7 - lastMoveTo.x, 7 - lastMoveTo.y, squareSize};
+
+        moveSquare[0] = std::make_unique<sf::RectangleShape>(board[lastMoveFrom.x][lastMoveFrom.y]);
+        moveSquare[1] = std::make_unique<sf::RectangleShape>(board[lastMoveTo.x][lastMoveTo.y]);
+
+        moveSquare[0]->setFillColor(MOVECOLOR);
+        moveSquare[1]->setFillColor(MOVECOLOR);
+    }
+
+    // Also update check highlight if present
+    if (checkSquare != nullptr) {
+        Square whiteKing = findKing(true);
+        Square blackKing = findKing(false);
+        bool whiteInCheck = isKingInCheck(true);
+        bool blackInCheck = isKingInCheck(false);
+
+        if (whiteInCheck) {
+            checkSquare = std::make_unique<sf::RectangleShape>(board[whiteKing.x][whiteKing.y]);
+            checkSquare->setFillColor(CHECKCOLOR);
+        } else if (blackInCheck) {
+            checkSquare = std::make_unique<sf::RectangleShape>(board[blackKing.x][blackKing.y]);
+            checkSquare->setFillColor(CHECKCOLOR);
+        }
+    }
 }
 
 bool Board::getOrientation() { return orientation; }
 
 void Board::paintMove(Square old, Square moved) {
+    // Store logical positions for repaint after flip
+    lastMoveFrom = old;
+    lastMoveTo = moved;
+
     moveSquare[0] = std::make_unique<sf::RectangleShape>(board[old.x][old.y]);
     moveSquare[1] = std::make_unique<sf::RectangleShape>(board[moved.x][moved.y]);
 
@@ -114,7 +146,12 @@ void Board::paintMove(Square old, Square moved) {
     moveSquare[1]->setFillColor(MOVECOLOR);
 }
 
-void Board::resetColors() { moveSquare[0].reset(), moveSquare[1].reset(); }
+void Board::resetColors() {
+    moveSquare[0].reset();
+    moveSquare[1].reset();
+    lastMoveFrom = {-1, -1, 0};
+    lastMoveTo = {-1, -1, 0};
+}
 
 bool Board::isPainted() { return moveSquare[0] != nullptr; }
 

@@ -1,16 +1,17 @@
 #pragma once
 
 #include "Board.hpp"
+#include "Move.hpp"
 #include "Piece.hpp"
 #include "Sound.hpp"
 #include <SFML/Graphics.hpp>
 #include <stack>
 #include <string>
-#include <tuple>
 #include <vector>
 
-typedef std::tuple<std::shared_ptr<Piece>, Square, std::shared_ptr<Piece>, Square, bool> move_tuple;
 typedef std::vector<sf::CircleShape> circle_move;
+
+constexpr float PANEL_WIDTH = 150.f;
 
 enum class GameState { PLAYING, PROMOTING, CHECKMATE, STALEMATE };
 
@@ -32,8 +33,8 @@ class Game {
 
     std::shared_ptr<Piece> moving;
     std::shared_ptr<Piece> lastMovedPawn;
-    std::stack<move_tuple> moves;
-    std::stack<move_tuple> redoMoves;
+    std::stack<Move> moves;
+    std::stack<Move> redoMoves;
 
     // Promotion state
     std::shared_ptr<Piece> promotingPawn;
@@ -51,6 +52,8 @@ class Game {
     GameState checkGameState();
     void drawEndGame();
     void drawPromotionUI();
+    void drawTurnIndicator();
+    void drawCoordinates();
     bool handlePromotionClick(const sf::Vector2i &position);
     void completePromotion(char pieceType);
     bool isPawnPromotion(std::shared_ptr<Piece> piece, Square targetSquare);
