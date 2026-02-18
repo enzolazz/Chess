@@ -43,6 +43,8 @@
             makeWrapper $out/bin/.ChessApp-unwrapped $out/bin/ChessApp \
               --chdir $out/share/chess-app
           '';
+
+          meta.mainProgram = "ChessApp";
         };
 
         devShells.default = pkgs.mkShell {
