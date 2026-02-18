@@ -62,3 +62,6 @@ out/
 
 # clangd cache
 .cache/
+
+# Nix
+result
