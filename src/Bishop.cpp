@@ -10,4 +10,22 @@ bool Bishop::isValidMove(Square newSquare) {
     return false;
 }
 
-square_list Bishop::getMoves() { return std::vector<Square>(); }
+square_list Bishop::getMoves() {
+    square_list moves;
+    Square current = getSquare();
+
+    // Four diagonal directions
+    int directions[4][2] = {{-1, -1}, {-1, 1}, {1, -1}, {1, 1}};
+
+    for (auto &dir : directions) {
+        for (int i = 1; i < 8; i++) {
+            int newX = current.x + dir[0] * i;
+            int newY = current.y + dir[1] * i;
+            if (newX >= 0 && newX < 8 && newY >= 0 && newY < 8) {
+                moves.push_back(Square{newX, newY, current.size});
+            }
+        }
+    }
+
+    return moves;
+}

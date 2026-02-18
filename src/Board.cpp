@@ -117,3 +117,110 @@ void Board::paintMove(Square old, Square moved) {
 void Board::resetColors() { moveSquare[0].reset(), moveSquare[1].reset(); }
 
 bool Board::isPainted() { return moveSquare[0] != nullptr; }
+
+Square Board::findKing(bool isWhite) {
+    char kingType = isWhite ? 'K' : 'k';
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            if (pieces[i][j] != nullptr && pieces[i][j]->getType() == kingType) {
+                return Square{i, j, squareSize};
+            }
+        }
+    }
+    return Square{-1, -1, squareSize};
+}
+
+bool Board::isSquareAttacked(Square target, bool byWhite) {
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            std::shared_ptr<Piece> piece = pieces[i][j];
+            if (piece == nullptr || piece->isWhite() != byWhite)
+                continue;
+
+            char type = std::tolower(piece->getType());
+            int dx = target.x - i;
+            int dy = target.y - j;
+            int absDx = abs(dx);
+            int absDy = abs(dy);
+
+            bool canAttack = false;
+
+            switch (type) {
+            case 'p': {
+                int direction = byWhite ? -1 : 1;
+                if (!orientation)
+                    direction *= -1;
+                if (absDx == 1 && dy == direction)
+                    canAttack = true;
+                break;
+            }
+            case 'n':
+                if ((absDx == 2 && absDy == 1) || (absDx == 1 && absDy == 2))
+                    canAttack = true;
+                break;
+            case 'k':
+                if (absDx <= 1 && absDy <= 1 && (absDx + absDy > 0))
+                    canAttack = true;
+                break;
+            case 'r':
+                if ((dx == 0 || dy == 0) && (absDx + absDy > 0))
+                    canAttack = true;
+                break;
+            case 'b':
+                if (absDx == absDy && absDx > 0)
+                    canAttack = true;
+                break;
+            case 'q':
+                if ((dx == 0 || dy == 0 || absDx == absDy) && (absDx + absDy > 0))
+                    canAttack = true;
+                break;
+            }
+
+            if (!canAttack)
+                continue;
+
+            // For sliding pieces, check if path is clear
+            if (type == 'r' || type == 'b' || type == 'q') {
+                int stepX = (dx == 0) ? 0 : (dx > 0 ? 1 : -1);
+                int stepY = (dy == 0) ? 0 : (dy > 0 ? 1 : -1);
+                int x = i + stepX;
+                int y = j + stepY;
+                bool pathClear = true;
+
+                while (x != target.x || y != target.y) {
+                    if (pieces[x][y] != nullptr) {
+                        pathClear = false;
+                        break;
+                    }
+                    x += stepX;
+                    y += stepY;
+                }
+
+                if (!pathClear)
+                    continue;
+            }
+
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Board::isKingInCheck(bool isWhite) {
+    Square kingPos = findKing(isWhite);
+    if (kingPos.x == -1)
+        return false;
+    return isSquareAttacked(kingPos, !isWhite);
+}
+
+void Board::highlightCheck(bool isWhite, bool highlight) {
+    if (highlight) {
+        Square kingPos = findKing(isWhite);
+        if (kingPos.x != -1) {
+            checkSquare = std::make_unique<sf::RectangleShape>(board[kingPos.x][kingPos.y]);
+            checkSquare->setFillColor(CHECKCOLOR);
+        }
+    } else {
+        checkSquare.reset();
+    }
+}

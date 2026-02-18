@@ -22,9 +22,12 @@ class Board {
     void setPiece(std::shared_ptr<Piece> piece, Square square);
     void deletePiece(int x, int y);
 
+#define CHECKCOLOR sf::Color(235, 97, 80, 200)
+
  public:
     sf::RectangleShape board[8][8];
     std::array<std::unique_ptr<sf::RectangleShape>, 2> moveSquare;
+    std::unique_ptr<sf::RectangleShape> checkSquare;
 
     Board(float squareSize, std::string piecesSetup);
 
@@ -37,4 +40,9 @@ class Board {
     void resetColors();
     bool isPainted();
     bool getOrientation();
+
+    Square findKing(bool isWhite);
+    bool isSquareAttacked(Square target, bool byWhite);
+    bool isKingInCheck(bool isWhite);
+    void highlightCheck(bool isWhite, bool highlight);
 };

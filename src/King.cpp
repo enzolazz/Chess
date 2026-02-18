@@ -13,4 +13,26 @@ bool King::isValidMove(Square newSquare) {
     return false;
 }
 
-square_list King::getMoves() { return std::vector<Square>(); }
+square_list King::getMoves() {
+    square_list moves;
+    Square current = getSquare();
+
+    // All 8 directions + castling squares
+    int directions[8][2] = {{-1, -1}, {-1, 0}, {-1, 1}, {0, -1}, {0, 1}, {1, -1}, {1, 0}, {1, 1}};
+
+    for (auto &dir : directions) {
+        int newX = current.x + dir[0];
+        int newY = current.y + dir[1];
+        if (newX >= 0 && newX < 8 && newY >= 0 && newY < 8) {
+            moves.push_back(Square{newX, newY, current.size});
+        }
+    }
+
+    // Castling squares (will be validated by Game)
+    if (!hasMoved()) {
+        moves.push_back(Square{current.x - 2, current.y, current.size}); // Queen-side
+        moves.push_back(Square{current.x + 2, current.y, current.size}); // King-side
+    }
+
+    return moves;
+}

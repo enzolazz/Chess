@@ -12,13 +12,13 @@ Piece::Piece(char piece, Square square) : piece(piece), square(square) {
 void Piece::setTexture(char piece) {
     std::string path = "etc/images/" + std::string(1, piece) + ".png";
 
-    texture = new sf::Texture();
+    texture = std::make_unique<sf::Texture>();
     if (!texture->loadFromFile(path)) {
-        std::cerr << "Failed to load texture from: " << path << std::endl; // Error message
-        throw std::runtime_error("Falha ao carregar textura: " + path);
+        std::cerr << "Failed to load texture from: " << path << std::endl;
+        throw std::runtime_error("Failed to load texture: " + path);
     }
 
-    sprite = new sf::Sprite(*texture);
+    sprite = std::make_unique<sf::Sprite>(*texture);
     sprite->setOrigin({static_cast<float>(texture->getSize().x / 2), static_cast<float>(texture->getSize().y / 2)});
 }
 

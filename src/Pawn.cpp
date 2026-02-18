@@ -39,11 +39,32 @@ bool Pawn::isValidMove(Square newSquare, bool boardOrientation) {
 }
 
 square_list Pawn::getMoves() {
-    square_list s;
+    square_list moves;
+    Square current = getSquare();
 
-    s.push_back(Square{3, 3, getSquare().size});
-    s.push_back(Square{3, 4, getSquare().size});
-    s.push_back(Square{3, 5, getSquare().size});
+    // Direction depends on color (white moves up, black moves down)
+    // This is a simplified version - actual validation happens in Game
+    int direction = isWhite() ? -1 : 1;
 
-    return s;
+    // Forward move
+    int newY = current.y + direction;
+    if (newY >= 0 && newY < 8) {
+        moves.push_back(Square{current.x, newY, current.size});
+
+        // Double move from starting position
+        int startRow = isWhite() ? 6 : 1;
+        if (current.y == startRow) {
+            moves.push_back(Square{current.x, current.y + 2 * direction, current.size});
+        }
+    }
+
+    // Diagonal captures
+    if (current.x > 0 && newY >= 0 && newY < 8) {
+        moves.push_back(Square{current.x - 1, newY, current.size});
+    }
+    if (current.x < 7 && newY >= 0 && newY < 8) {
+        moves.push_back(Square{current.x + 1, newY, current.size});
+    }
+
+    return moves;
 }

@@ -50,13 +50,19 @@ int main() {
             if (const auto *key = event->getIf<sf::Event::KeyPressed>()) {
                 switch (key->code) {
                 case sf::Keyboard::Key::R:
-                    game.switchSides();
+                    if (!game.isGameOver())
+                        game.switchSides();
                     break;
                 case sf::Keyboard::Key::Left:
-                    game.undo();
+                    if (!game.isGameOver())
+                        game.undo();
                     break;
                 case sf::Keyboard::Key::Right:
-                    game.redo();
+                    if (!game.isGameOver())
+                        game.redo();
+                    break;
+                case sf::Keyboard::Key::N:
+                    game.restart();
                     break;
                 case sf::Keyboard::Key::Escape:
                     window.close();

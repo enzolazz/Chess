@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SFML/Graphics.hpp>
+#include <memory>
 #include <vector>
 
 struct Square {
@@ -13,8 +14,8 @@ typedef std::vector<Square> square_list;
 
 class Piece {
  private:
-    sf::Texture *texture;
-    sf::Sprite *sprite;
+    std::unique_ptr<sf::Texture> texture;
+    std::unique_ptr<sf::Sprite> sprite;
     char piece;
     Square square;
     int move = 0;

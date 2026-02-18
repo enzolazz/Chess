@@ -12,8 +12,25 @@ static bool sameSquare(Square &a, Square &b) { return a.x == b.x && a.y == b.y; 
 
 Game::Game(sf::RenderWindow &window, float squareSize)
     : _window(window), squareSize(squareSize), whiteTurn(true), allowedToEnPassant(0),
-      initialBoard("rnbqkbnrpppppppp8888PPPPPPPPRNBQKBNR") {
-    board = new Board(squareSize, initialBoard);
+      initialBoard("rnbqkbnrpppppppp8888PPPPPPPPRNBQKBNR"), gameState(GameState::PLAYING), fontLoaded(false) {
+    board = std::make_unique<Board>(squareSize, initialBoard);
+
+    font = std::make_unique<sf::Font>();
+    fontLoaded = font->openFromFile("etc/fonts/Roboto-Bold.ttf");
+    if (!fontLoaded) {
+        fontLoaded = font->openFromFile("/usr/share/fonts/TTF/DejaVuSans-Bold.ttf");
+    }
+    if (!fontLoaded) {
+        fontLoaded = font->openFromFile("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf");
+    }
+
+    if (fontLoaded) {
+        endGameText = std::make_unique<sf::Text>(*font, "", 48);
+        endGameText->setFillColor(sf::Color::White);
+        endGameText->setOutlineColor(sf::Color::Black);
+        endGameText->setOutlineThickness(3.f);
+    }
+
     sounds.playStart();
 }
 
@@ -25,6 +42,10 @@ void Game::draw() {
     if (board->isPainted()) {
         _window.draw(*board->moveSquare[0]);
         _window.draw(*board->moveSquare[1]);
+    }
+
+    if (board->checkSquare != nullptr) {
+        _window.draw(*board->checkSquare);
     }
 
     for (int i = 0; i < 8; i++) {
@@ -39,9 +60,20 @@ void Game::draw() {
         showAvailableSquares();
         _window.draw(moving->getSprite());
     }
+
+    drawPromotionUI();
+    drawEndGame();
 }
 
 bool Game::piecePressed(const sf::Vector2i &position) {
+    if (gameState == GameState::PROMOTING) {
+        handlePromotionClick(position);
+        return false;
+    }
+
+    if (gameState != GameState::PLAYING)
+        return false;
+
     int x = position.x / squareSize;
     int y = position.y / squareSize;
 
@@ -96,16 +128,42 @@ bool Game::pieceReleased(const sf::Vector2i &position) {
     board->resetColors();
     board->paintMove(pieceSquare, movingSquare);
 
+    // Check for pawn promotion before completing the move
+    if (isPawnPromotion(moving, movingSquare)) {
+        promotingPawn = moving;
+        promotionSquare = movingSquare;
+        promotionCaptured = board->getPiece(movingSquare.x, movingSquare.y);
+
+        board->movePiece(moving, movingSquare);
+        gameState = GameState::PROMOTING;
+        moving = nullptr;
+        return true;
+    }
+
     bool captured = board->movePiece(moving, movingSquare);
-    if (length != moves.size() - 1 && !captured)
+
+    // Check if opponent's king is now in check
+    bool opponentInCheck = board->isKingInCheck(!moving->isWhite());
+    board->highlightCheck(!moving->isWhite(), opponentInCheck);
+
+    if (opponentInCheck) {
+        sounds.playCheck();
+    } else if (length != moves.size() - 1 && !captured) {
         sounds.playCastle();
-    else if (captured)
+    } else if (captured) {
         sounds.playCapture();
-    else
+    } else {
         sounds.playMove();
+    }
 
     moving = nullptr;
     toggleTurn();
+
+    // Check for checkmate/stalemate
+    gameState = checkGameState();
+    if (gameState != GameState::PLAYING) {
+        sounds.playEnd();
+    }
 
     return true;
 }
@@ -149,7 +207,10 @@ bool Game::isLegalMove(std::shared_ptr<Piece> piece, Square *square) {
         if (abs(dX) == 1 && abs(dY) == 1 && newSquarePiece == nullptr) {
             std::shared_ptr<Piece> enPassantPiece = board->getPiece(x, pieceY);
 
-            if (allowedToEnPassant != 0 || enPassantPiece == nullptr)
+            // En passant requires: valid timing, enemy pawn adjacent
+            if (allowedToEnPassant != 0 || enPassantPiece == nullptr ||
+                enPassantPiece->isWhite() == piece->isWhite() ||
+                getPieceType(enPassantPiece) != 'p')
                 return false;
 
             moves.push(
@@ -189,6 +250,10 @@ bool Game::isLegalMove(std::shared_ptr<Piece> piece, Square *square) {
 
         // Will castle
         if (rook != nullptr) {
+            // Can't castle if king is in check
+            if (board->isKingInCheck(piece->isWhite()))
+                return false;
+
             if (rook->hasMoved())
                 return false;
             int rX = rook->getSquare().x, rY = rook->getSquare().y;
@@ -213,10 +278,20 @@ bool Game::isLegalMove(std::shared_ptr<Piece> piece, Square *square) {
 
                     if (sameColorCapture(piece, newSquarePiece))
                         return false;
-                } while (i != (pieceX + dX));
 
-                // Needs guard check
+                    // King can't pass through attacked square
+                    if (i != (pieceX + dX) || i == pieceX + (dX > 0 ? 1 : -1)) {
+                        Square passingSquare{i, pieceY, squareSize};
+                        if (board->isSquareAttacked(passingSquare, !piece->isWhite()))
+                            return false;
+                    }
+                } while (i != (pieceX + dX));
             }
+
+            // Check that the final square is not attacked
+            Square finalSquare{pieceX + dX, pieceY, squareSize};
+            if (board->isSquareAttacked(finalSquare, !piece->isWhite()))
+                return false;
 
             move_tuple rookCastled(rook, rook->getSquare(), nullptr, castledSquare, board->getOrientation());
             moves.push(rookCastled);
@@ -257,6 +332,13 @@ bool Game::isLegalMove(std::shared_ptr<Piece> piece, Square *square) {
             } while (i != x || j != y);
         }
         break;
+    }
+
+    // Check if this move would leave the king in check
+    // For castling, we already validated attack checks on the path
+    if (pieceType != 'k' || rook == nullptr) {
+        if (wouldLeaveKingInCheck(piece, *square))
+            return false;
     }
 
     allowedToEnPassant++;
@@ -330,6 +412,13 @@ void Game::undo() {
     else
         sounds.playMove();
     redoMoves.push(lastMove);
+
+    // Update check highlight after undo
+    bool whiteInCheck = board->isKingInCheck(true);
+    bool blackInCheck = board->isKingInCheck(false);
+    board->highlightCheck(true, whiteInCheck);
+    if (!whiteInCheck)
+        board->highlightCheck(false, blackInCheck);
 }
 
 void Game::redo() {
@@ -390,6 +479,13 @@ void Game::redo() {
     else
         sounds.playMove();
     moves.push(undoed);
+
+    // Update check highlight after redo
+    bool whiteInCheck = board->isKingInCheck(true);
+    bool blackInCheck = board->isKingInCheck(false);
+    board->highlightCheck(true, whiteInCheck);
+    if (!whiteInCheck)
+        board->highlightCheck(false, blackInCheck);
 }
 
 void Game::toggleTurn() {
@@ -400,23 +496,111 @@ void Game::toggleTurn() {
 void Game::switchSides() { board->invertPosition(); }
 
 void Game::showAvailableSquares() {
-    square_list moves = moving->getMoves();
+    square_list potentialMoves = moving->getMoves();
     circle_move circles;
 
-    sf::Color gray = sf::Color(146, 146, 146, 146);
-    for (Square square : moves) {
-        sf::CircleShape circle(12.f);
-        circle.setFillColor(gray);
+    sf::Color moveColor = sf::Color(146, 146, 146, 146);
+    sf::Color captureColor = sf::Color(200, 80, 80, 180);
 
-        circle.setOrigin({12.f, 12.f});
+    for (Square &square : potentialMoves) {
+        // Skip out-of-bounds moves
+        if (square.x < 0 || square.x >= 8 || square.y < 0 || square.y >= 8)
+            continue;
 
-        sf::Vector2f pos(square.x * square.size + square.size / 2, square.y * square.size + square.size / 2);
+        // Check if move would leave king in check
+        if (wouldLeaveKingInCheck(moving, square))
+            continue;
+
+        // Check for same-color piece blocking
+        std::shared_ptr<Piece> targetPiece = board->getPiece(square.x, square.y);
+        if (targetPiece != nullptr && targetPiece->isWhite() == moving->isWhite())
+            continue;
+
+        // For sliding pieces, check if path is blocked
+        char pieceType = getPieceType(moving);
+        if (pieceType == 'r' || pieceType == 'b' || pieceType == 'q') {
+            Square current = moving->getSquare();
+            int dx = square.x - current.x;
+            int dy = square.y - current.y;
+            int stepX = (dx == 0) ? 0 : (dx > 0 ? 1 : -1);
+            int stepY = (dy == 0) ? 0 : (dy > 0 ? 1 : -1);
+
+            bool blocked = false;
+            int x = current.x + stepX;
+            int y = current.y + stepY;
+            while (x != square.x || y != square.y) {
+                if (board->getPiece(x, y) != nullptr) {
+                    blocked = true;
+                    break;
+                }
+                x += stepX;
+                y += stepY;
+            }
+            if (blocked)
+                continue;
+        }
+
+        // For pawns, use isValidMove which handles orientation correctly
+        if (pieceType == 'p') {
+            Square current = moving->getSquare();
+            int dx = abs(square.x - current.x);
+
+            // Use the pawn's isValidMove for direction validation
+            std::shared_ptr<Pawn> pawn = std::static_pointer_cast<Pawn>(moving);
+            if (!pawn->isValidMove(square, board->getOrientation()))
+                continue;
+
+            // Forward moves (dx == 0) require empty squares
+            if (dx == 0) {
+                if (targetPiece != nullptr)
+                    continue;
+                // For double move, check middle square
+                int dy = square.y - current.y;
+                if (abs(dy) == 2) {
+                    int midY = current.y + (dy > 0 ? 1 : -1);
+                    if (board->getPiece(square.x, midY) != nullptr)
+                        continue;
+                }
+            }
+            // Diagonal moves (dx == 1) require enemy capture or valid en passant
+            else if (dx == 1) {
+                if (targetPiece != nullptr) {
+                    // Must be enemy piece to capture
+                    if (targetPiece->isWhite() == moving->isWhite())
+                        continue;
+                } else {
+                    // En passant: must be adjacent enemy pawn that just double-moved
+                    std::shared_ptr<Piece> adjacentPiece = board->getPiece(square.x, current.y);
+                    bool validEnPassant = (adjacentPiece != nullptr &&
+                                          getPieceType(adjacentPiece) == 'p' &&
+                                          adjacentPiece->isWhite() != moving->isWhite() &&
+                                          allowedToEnPassant == 0);
+                    if (!validEnPassant)
+                        continue;
+                }
+            }
+        }
+
+        // Draw the move indicator
+        bool isCapture = targetPiece != nullptr;
+        sf::CircleShape circle(isCapture ? squareSize / 2 - 5.f : 12.f);
+
+        if (isCapture) {
+            circle.setFillColor(sf::Color::Transparent);
+            circle.setOutlineColor(captureColor);
+            circle.setOutlineThickness(5.f);
+        } else {
+            circle.setFillColor(moveColor);
+        }
+
+        circle.setOrigin({circle.getRadius(), circle.getRadius()});
+        sf::Vector2f pos(square.x * squareSize + squareSize / 2, square.y * squareSize + squareSize / 2);
         circle.setPosition({pos.x, pos.y});
 
         circles.push_back(circle);
     }
 
-    for (auto shape : circles) {
+    for (auto &shape : circles) {
         _window.draw(shape);
     }
 }
@@ -433,4 +617,259 @@ bool Game::sameColorCapture(std::shared_ptr<Piece> moved, std::shared_ptr<Piece>
         return false;
 
     return true;
+}
+
+bool Game::wouldLeaveKingInCheck(std::shared_ptr<Piece> piece, Square newSquare) {
+    Square oldSquare = piece->getSquare();
+    std::shared_ptr<Piece> capturedPiece = board->getPiece(newSquare.x, newSquare.y);
+
+    // Save sprite position before simulation (for dragging)
+    sf::Vector2f savedSpritePos = piece->getSprite().getPosition();
+
+    // Simulate the move (only board state, not visual)
+    board->getPiece(oldSquare.x, oldSquare.y) = nullptr;
+    board->getPiece(newSquare.x, newSquare.y) = piece;
+    Square savedSquare = piece->getSquare();
+    piece->setSquare(newSquare);
+
+    // Check if own king is in check
+    bool inCheck = board->isKingInCheck(piece->isWhite());
+
+    // Undo the simulation
+    board->getPiece(oldSquare.x, oldSquare.y) = piece;
+    board->getPiece(newSquare.x, newSquare.y) = capturedPiece;
+    piece->setSquare(savedSquare);
+
+    // Restore sprite position for dragging
+    piece->getSprite().setPosition(savedSpritePos);
+
+    return inCheck;
+}
+
+bool Game::isSquareAttackedForCastling(Square target, bool byWhite) {
+    return board->isSquareAttacked(target, byWhite);
+}
+
+bool Game::hasLegalMoves(bool isWhite) {
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            std::shared_ptr<Piece> piece = board->getPiece(i, j);
+            if (piece == nullptr || piece->isWhite() != isWhite)
+                continue;
+
+            // Try all possible destination squares
+            for (int x = 0; x < 8; x++) {
+                for (int y = 0; y < 8; y++) {
+                    if (x == i && y == j)
+                        continue;
+
+                    Square targetSquare{x, y, squareSize};
+
+                    // Check basic move validity
+                    if (!piece->isValidMove(targetSquare))
+                        continue;
+
+                    // Check if move would leave king in check
+                    if (!wouldLeaveKingInCheck(piece, targetSquare)) {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+    return false;
+}
+
+GameState Game::checkGameState() {
+    bool currentPlayerIsWhite = whiteTurn;
+    bool inCheck = board->isKingInCheck(currentPlayerIsWhite);
+    bool hasLegal = hasLegalMoves(currentPlayerIsWhite);
+
+    if (!hasLegal) {
+        if (inCheck) {
+            return GameState::CHECKMATE;
+        } else {
+            return GameState::STALEMATE;
+        }
+    }
+
+    return GameState::PLAYING;
+}
+
+void Game::drawEndGame() {
+    if (gameState == GameState::PLAYING)
+        return;
+
+    // Draw semi-transparent overlay
+    sf::RectangleShape overlay({squareSize * 8, squareSize * 8});
+    overlay.setFillColor(sf::Color(0, 0, 0, 150));
+    _window.draw(overlay);
+
+    if (!fontLoaded)
+        return;
+
+    // Draw end game message
+    std::string message;
+    if (gameState == GameState::CHECKMATE) {
+        message = whiteTurn ? "Black wins!" : "White wins!";
+    } else {
+        message = "Stalemate - Draw!";
+    }
+
+    endGameText->setString(message);
+    sf::FloatRect textBounds = endGameText->getLocalBounds();
+    endGameText->setOrigin({textBounds.position.x + textBounds.size.x / 2.f,
+                            textBounds.position.y + textBounds.size.y / 2.f});
+    endGameText->setPosition({squareSize * 4, squareSize * 3.5f});
+    _window.draw(*endGameText);
+
+    // Draw restart instruction
+    sf::Text restartText(*font, "Press N to start new game", 24);
+    restartText.setFillColor(sf::Color::White);
+    restartText.setOutlineColor(sf::Color::Black);
+    restartText.setOutlineThickness(2.f);
+    sf::FloatRect restartBounds = restartText.getLocalBounds();
+    restartText.setOrigin({restartBounds.position.x + restartBounds.size.x / 2.f,
+                           restartBounds.position.y + restartBounds.size.y / 2.f});
+    restartText.setPosition({squareSize * 4, squareSize * 4.5f});
+    _window.draw(restartText);
+}
+
+void Game::restart() {
+    board = std::make_unique<Board>(squareSize, initialBoard);
+    whiteTurn = true;
+    allowedToEnPassant = 0;
+    gameState = GameState::PLAYING;
+    moving = nullptr;
+    lastMovedPawn = nullptr;
+    moves = std::stack<move_tuple>();
+    redoMoves = std::stack<move_tuple>();
+    sounds.playStart();
+}
+
+bool Game::isGameOver() { return gameState != GameState::PLAYING && gameState != GameState::PROMOTING; }
+
+bool Game::isPawnPromotion(std::shared_ptr<Piece> piece, Square targetSquare) {
+    if (getPieceType(piece) != 'p')
+        return false;
+
+    int lastRank = piece->isWhite() ? 0 : 7;
+    if (!board->getOrientation())
+        lastRank = 7 - lastRank;
+
+    return targetSquare.y == lastRank;
+}
+
+void Game::drawPromotionUI() {
+    if (gameState != GameState::PROMOTING)
+        return;
+
+    // Determine UI position based on promotion square
+    int uiX = promotionSquare.x;
+    int uiStartY = promotingPawn->isWhite() ? 0 : 4;
+    if (!board->getOrientation())
+        uiStartY = 7 - uiStartY - 3;
+
+    // Draw background overlay
+    sf::RectangleShape overlay({squareSize * 8, squareSize * 8});
+    overlay.setFillColor(sf::Color(0, 0, 0, 100));
+    _window.draw(overlay);
+
+    // Draw promotion panel
+    sf::RectangleShape panel({squareSize, squareSize * 4});
+    panel.setPosition({uiX * squareSize, uiStartY * squareSize});
+    panel.setFillColor(sf::Color(240, 240, 240));
+    panel.setOutlineColor(sf::Color::Black);
+    panel.setOutlineThickness(2.f);
+    _window.draw(panel);
+
+    // Piece options: Queen, Rook, Bishop, Knight
+    char pieceTypes[] = {'q', 'r', 'b', 'n'};
+    if (promotingPawn->isWhite()) {
+        pieceTypes[0] = 'Q';
+        pieceTypes[1] = 'R';
+        pieceTypes[2] = 'B';
+        pieceTypes[3] = 'N';
+    }
+
+    for (int i = 0; i < 4; i++) {
+        int y = uiStartY + i;
+        if (!promotingPawn->isWhite() && board->getOrientation())
+            y = uiStartY + (3 - i);
+        else if (promotingPawn->isWhite() && !board->getOrientation())
+            y = uiStartY + (3 - i);
+
+        Square optionSquare{uiX, y, squareSize};
+        auto tempPiece = board->createPiece(pieceTypes[i], optionSquare);
+        if (tempPiece)
+            _window.draw(tempPiece->getSprite());
+    }
+}
+
+bool Game::handlePromotionClick(const sf::Vector2i &position) {
+    if (gameState != GameState::PROMOTING)
+        return false;
+
+    int clickX = position.x / squareSize;
+    int clickY = position.y / squareSize;
+
+    int uiX = promotionSquare.x;
+    int uiStartY = promotingPawn->isWhite() ? 0 : 4;
+    if (!board->getOrientation())
+        uiStartY = 7 - uiStartY - 3;
+
+    if (clickX != uiX)
+        return false;
+
+    if (clickY < uiStartY || clickY >= uiStartY + 4)
+        return false;
+
+    int selection = clickY - uiStartY;
+    if (!promotingPawn->isWhite() && board->getOrientation())
+        selection = 3 - selection;
+    else if (promotingPawn->isWhite() && !board->getOrientation())
+        selection = 3 - selection;
+
+    char pieceTypes[] = {'q', 'r', 'b', 'n'};
+    if (promotingPawn->isWhite()) {
+        pieceTypes[0] = 'Q';
+        pieceTypes[1] = 'R';
+        pieceTypes[2] = 'B';
+        pieceTypes[3] = 'N';
+    }
+
+    completePromotion(pieceTypes[selection]);
+    return true;
+}
+
+void Game::completePromotion(char pieceType) {
+    // Create the promoted piece
+    std::shared_ptr<Piece> promotedPiece = board->createPiece(pieceType, promotionSquare);
+
+    // Place it on the board
+    board->getPiece(promotionSquare.x, promotionSquare.y) = promotedPiece;
+
+    // Record the move for undo (the pawn move is already recorded, just update)
+    // The move is already pushed in pieceReleased, so we're good
+
+    sounds.playPromotion();
+
+    gameState = GameState::PLAYING;
+    toggleTurn();
+
+    // Check for checkmate/stalemate after promotion
+    bool opponentInCheck = board->isKingInCheck(whiteTurn);
+    board->highlightCheck(whiteTurn, opponentInCheck);
+
+    if (opponentInCheck) {
+        sounds.playCheck();
+    }
+
+    gameState = checkGameState();
+    if (gameState == GameState::CHECKMATE || gameState == GameState::STALEMATE) {
+        sounds.playEnd();
+    }
+
+    promotingPawn = nullptr;
+    promotionCaptured = nullptr;
 }
