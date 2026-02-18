@@ -4,12 +4,14 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
+    nixgl.url = "github:nix-community/nixGL";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
+  outputs = { self, nixpkgs, flake-utils, nixgl }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
+        nixGL = nixgl.packages.${system}.nixGLIntel;
       in
       {
         packages.default = pkgs.stdenv.mkDerivation {
@@ -40,7 +42,8 @@
             cp build/ChessApp $out/bin/.ChessApp-unwrapped
             cp -r etc $out/share/chess-app/
 
-            makeWrapper $out/bin/.ChessApp-unwrapped $out/bin/ChessApp \
+            makeWrapper ${nixGL}/bin/nixGLIntel $out/bin/ChessApp \
+              --add-flags "$out/bin/.ChessApp-unwrapped" \
               --chdir $out/share/chess-app
           '';
 
