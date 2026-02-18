@@ -45,6 +45,9 @@ bool Game::piecePressed(const sf::Vector2i &position) {
     int x = position.x / squareSize;
     int y = position.y / squareSize;
 
+    if (x < 0 || x >= 8 || y < 0 || y >= 8)
+        return false;
+
     std::shared_ptr<Piece> piece = board->getPiece(x, y);
     if (piece == nullptr || !turnCheck(piece->getType()))
         return false;
@@ -65,6 +68,14 @@ void Game::pieceDrag() {
 bool Game::pieceReleased(const sf::Vector2i &position) {
     if (moving == nullptr)
         return false;
+
+    int x = position.x / squareSize;
+    int y = position.y / squareSize;
+
+    if (x < 0 || x >= 8 || y < 0 || y >= 8) {
+        resetMoving();
+        return false;
+    }
 
     Square pieceSquare = moving->getSquare();
 
@@ -104,6 +115,7 @@ void Game::resetMoving() {
         return;
 
     board->movePiece(moving, moving->getSquare());
+    moving = nullptr;
 }
 
 bool Game::isLegalMove(std::shared_ptr<Piece> piece, Square *square) {
